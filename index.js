@@ -14,6 +14,7 @@ module.exports = class PearRuntime extends ReadyResource {
   constructor(config) {
     super()
 
+    if (!config.update || config.updates === false) return {}
     if (!config.dir) throw new Error('dir required')
     if (!config.link) throw new Error('upgrade link required')
     const { drive } = link.parse(config.link)
@@ -59,10 +60,10 @@ module.exports = class PearRuntime extends ReadyResource {
   }
 
   async _close() {
-    await this.drive.close()
-    if (this.checkout) await this.checkout.close()
-    await this.store.destroy()
-    await this.swarm.destroy()
+    await this.drive?.close()
+    await this.checkout?.close()
+    await this.store?.destroy()
+    await this.swarm?.destroy()
   }
 
   _updateBackground() {
