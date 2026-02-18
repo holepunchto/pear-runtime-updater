@@ -5,12 +5,22 @@
   "license": "Apache-2.0",
   "author": "Holepunch Inc",
   "main": "index.js",
+  "exports": {
+    "./package": "./package.json",
+    ".": {
+      "types": "./index.d.ts",
+      "default": "./index.js"
+    }
+  },
   "files": [
-    "index.js"
+    "package.json",
+    "index.js",
+    "index.d.ts"
   ],
   "scripts": {
-    "format": "prettier --write .",
-    "test": "prettier --check . && lunte"
+    "format": "prettier . --write",
+    "test": "prettier . --check && lunte && brittle-bare test/index.js",
+    "lint": "lunte"
   },
   "imports": {
     "fs": {

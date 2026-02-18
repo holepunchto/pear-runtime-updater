@@ -32,7 +32,7 @@ Emitted with progress data while mirroring the update.
 
 #### `runtime.on('updated')`
 
-Emitted when the update is fully downloaded and ready. 
+Emitted when the update is fully downloaded and ready.
 
 #### `runtime.next`
 
