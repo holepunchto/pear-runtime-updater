@@ -12,18 +12,16 @@ const { platform, arch } = require('which-runtime')
 const host = platform + '-' + arch
 
 module.exports = class PearRuntime extends ReadyResource {
-  constructor(config) {
+  constructor(opts = {}) {
     super()
-    if (!config.dir) throw new Error('dir required')
 
-    this.dir = config.dir
-    this.version = config.version || 0
-    this.storage = path.join(this.dir, 'app-storage')
-    this.app = config.app
+    this.dir = opts.dir
+    this.version = opts.version || 0
+    this.app = opts.app
     this.name = this.app && path.basename(this.app)
-    this.bundled = config.bundled || !!this.app
+    this.bundled = opts.bundled || !!this.app
 
-    const { drive: upgrade } = link.parse(config.upgrade)
+    const { drive: upgrade } = link.parse(opts.upgrade)
     this.key = hid.decode(upgrade.key)
     this.length = upgrade.length || 0
     this.fork = upgrade.fork || 0
@@ -41,9 +39,9 @@ module.exports = class PearRuntime extends ReadyResource {
   }
 
   async _open() {
-    await this.drive?.ready()
+    await this.drive.ready()
 
-    if (this.bundled && this.updates !== false) {
+    if (this.bundled) {
       await fs.promises.rm(path.join(this.dir, 'pear-runtime/next'), {
         recursive: true,
         force: true

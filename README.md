@@ -1,75 +1,84 @@
 # pear-runtime-updater
 
-> Listens for OTA app updates
+> Listens for OTA Pear App updates
 
 ```sh
 npm install pear-runtime-updater
 ```
 
-Listens for P2P over-the-air (OTA) updates for [Pear](https://docs.pears.com) apps. Replicates from a pear link and emits when a new version is available.
+Listens for P2P over-the-air (OTA) updates for [Pear](https://docs.pears.com) apps. Replicates from a pear upgrade link and emits when a new version is available.
+
+## Usage
+
+```js
+const PearRuntimeUpdater = require('pear-runtime-updater')
+const path = require('path')
+const { version, upgrade } = require('./package.json')
+
+function getApp(){
+  return path.join(process.resourcesPath, '../..')
+}
+
+const updater = new PearRuntimeUpdater({
+  dir: path.join(app.getPath('userData')),
+  upgrade,
+  version,
+  app: getApp() // path to .app / .AppImage
+})
+
+await updater.ready()
+
+updater.on('updating', () => console.log('Update downloading…'))
+updater.on('updated', async () => {
+  console.log('Update ready')
+  await updater.applyUpdate()
+  app.relaunch()
+  app.exit(0)
+})
+
+process.on('beforeExit', () => updater.close())
+```
 
 ## Features
 
 - Peer-to-peer over-the-air (P2P OTA) update listening
-- Stores updatet app content
-- Emits when an update is in progress and when it’s ready
+- Replicates update content via [Hyperdrive](https://github.com/holepunchto/hyperdrive) / [Hyperswarm](https://github.com/holepunchto/hyperswarm)
+- Emits when an update is in progress, update diffs and when it’s ready
+- `applyUpdate()` to atomic swap the new build (bundled apps; macOS/Linux)
 
 ## API
 
-#### `const runtime = new PearRuntime(config)`
+#### `const updater = new PearRuntimeUpdater(opts)`
 
-- `config.dir` – (required) Directory to store data (e.g. app data dir).
-- `config.link` – (required) Pear upgrade link (e.g. from `package.json` `upgrade` field).
-- `config.version` – (optional) Current app version; used to decide if an update should be stored.
+- `opts.dir` – (required) Directory to store data (e.g. app data dir).
+- `opts.upgrade` – (required) Pear upgrade link (e.g. from `package.json` `upgrade` field).
+- `opts.version` – (optional) Current app version; used to decide if an update should be stored.
+- `opts.app` – (optional) Path to the app bundle (for bundled apps; used with `applyUpdate()`).
+- `opts.bundled` – (optional) Whether the app is bundled. Defaults to `!!opts.app`.
 
-#### `runtime.on('updating')`
+#### `updater.on('updating')`
 
 Emitted when an update is in progress (download started).
 
-#### `runtime.on('updating-delta', data)`
+#### `updater.on('updating-delta', data)`
 
 Emitted with progress data while mirroring the update.
 
-#### `runtime.on('updated')`
+#### `updater.on('updated')`
 
-Emitted when the update is fully downloaded and ready.
+Emitted when the update is fully downloaded and ready. After this, `updater.next` is the path to the staged update.
 
-#### `runtime.next`
+#### `updater.next`
 
-After `updated`, the path to the received update (e.g. `.../pear-runtime/next/<length>.<fork>`).
+After `updated`, the path to the staged update (e.g. for use with `applyUpdate()` or custom install logic).
 
-#### `await runtime.close()`
+#### `await updater.applyUpdate()`
 
-Closes the runtime. Call when shutting down the app.
+Apply the update by swapping the current app with the received build through atomic swap. Only valid after `updated`, when `opts.bundled` is true.
 
-## Making updates
+#### `await updater.close()`
 
-Experimental; details may change.
-
-1. Allocate a pear link with [pear](https://github.com/holepunchto/pear):
-
-   ```sh
-   pear touch
-   ```
-
-2. Put this link in your app’s `package.json` under an `upgrade` (or equivalent) field.
-
-3. Build the app and create a deployment folder:
-
-   ```
-   /package.json
-   /by-arch
-     /app
-       /[...platform-arch]
-   ```
-
-4. From that folder, stage and seed the link:
-
-   ```sh
-   pear stage <link-from-touch>
-   ```
-
-   Any running app with a lower version that uses this module will then see the update and emit `updated`.
+Closes the updater. Call when shutting down the app.
 
 ## License
 
