@@ -14,7 +14,6 @@ const host = platform + '-' + arch
 module.exports = class PearRuntime extends ReadyResource {
   constructor(config) {
     super()
-    this.updates = !!config.update && config.updates !== false
     if (!config.dir) throw new Error('dir required')
 
     this.dir = config.dir
@@ -24,22 +23,13 @@ module.exports = class PearRuntime extends ReadyResource {
     this.name = this.app && path.basename(this.app)
     this.bundled = config.bundled || !!this.app
 
-    if (this.updates) {
-      const { drive: upgrade } = link.parse(config.upgrade)
-      this.key = hid.decode(upgrade.key)
-      this.length = upgrade.length || 0
-      this.fork = upgrade.fork || 0
-      this.link = link.serialize({ drive: { fork: this.fork, length: this.length, key: this.key } })
-      this.store = new Corestore(path.join(this.dir, 'pear-runtime/corestore'))
-      this.drive = new Hyperdrive(this.store, this.key)
-    } else {
-      this.key = null
-      this.length = null
-      this.fork = null
-      this.link = null
-      this.store = null
-      this.drive = null
-    }
+    const { drive: upgrade } = link.parse(config.upgrade)
+    this.key = hid.decode(upgrade.key)
+    this.length = upgrade.length || 0
+    this.fork = upgrade.fork || 0
+    this.link = link.serialize({ drive: { fork: this.fork, length: this.length, key: this.key } })
+    this.store = new Corestore(path.join(this.dir, 'pear-runtime/corestore'))
+    this.drive = new Hyperdrive(this.store, this.key)
 
     this.swarm = null
     this.next = null
