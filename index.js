@@ -14,7 +14,7 @@ module.exports = class PearRuntime extends ReadyResource {
   constructor(config) {
     super()
 
-    if (!config.update || config.updates === false) return {}
+    if (config.updates === false) return {}
     if (!config.dir) throw new Error('dir required')
     if (!config.link) throw new Error('upgrade link required')
     const { drive } = link.parse(config.link)
