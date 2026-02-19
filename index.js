@@ -9,7 +9,8 @@ const ReadyResource = require('ready-resource')
 const link = require('pear-link')
 const hid = require('hypercore-id-encoding')
 const { platform, arch } = require('which-runtime')
-const host = platform + '-' + arch
+const isMobile = platform === 'ios' || platform === 'android'
+const host = isMobile ? platform : platform + '-' + arch
 
 module.exports = class PearRuntime extends ReadyResource {
   constructor(opts = {}) {
@@ -51,7 +52,7 @@ module.exports = class PearRuntime extends ReadyResource {
   }
 
   async _open() {
-    if (this.updates === false) return
+    if (!this.updates) return
     await this.drive.ready()
 
     if (this.bundled) {
@@ -88,7 +89,9 @@ module.exports = class PearRuntime extends ReadyResource {
     this.applied = true
 
     // mac only for now, linux similar, windows, more pain
-    await fsx.swap(path.join(this.next, 'by-arch', host, 'app', this.name), this.app)
+    const segments = [this.next, 'by-arch', host, 'app'];
+    if (!isMobile) segments.push(this.name);
+    await fsx.swap(path.join(...segments), this.app)
     await fs.promises.rm(this.next, { recursive: true, force: true })
   }
 
@@ -97,7 +100,7 @@ module.exports = class PearRuntime extends ReadyResource {
   }
 
   async _update() {
-    if (this.updating || this.updates === false) return
+    if (this.updating || !this.updates) return
     this.updating = true
 
     const length = this.drive.core.length
@@ -118,7 +121,7 @@ module.exports = class PearRuntime extends ReadyResource {
     const local = new Localdrive(next)
 
     this.emit('updating')
-    const prefix = '/by-arch/' + host + '/app/' + this.name
+    const prefix = `/by-arch/${host}/app/${isMobile ? '' : this.name}`
     for await (const data of co.mirror(local, { prefix })) {
       this.emit('updating-delta', data)
     }
