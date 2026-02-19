@@ -89,8 +89,8 @@ module.exports = class PearRuntime extends ReadyResource {
     this.applied = true
 
     // mac only for now, linux similar, windows, more pain
-    const segments = [this.next, 'by-arch', host, 'app'];
-    if (!isMobile) segments.push(this.name);
+    const segments = [this.next, 'by-arch', host, 'app']
+    if (!isMobile) segments.push(this.name)
     await fsx.swap(path.join(...segments), this.app)
     await fs.promises.rm(this.next, { recursive: true, force: true })
   }
