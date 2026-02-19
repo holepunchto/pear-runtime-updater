@@ -55,6 +55,7 @@ process.on('beforeExit', () => updater.close())
 - `opts.version` – (optional) Current app version; used to decide if an update should be stored.
 - `opts.app` – (optional) Path to the app bundle (for bundled apps; used with `applyUpdate()`).
 - `opts.bundled` – (optional) Whether the app is bundled. Defaults to `!!opts.app`.
+- `opts.updates` – (optional) Set to false to opt out of updates.
 
 #### `updater.on('updating')`
 

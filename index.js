@@ -14,6 +14,7 @@ const host = platform + '-' + arch
 module.exports = class PearRuntime extends ReadyResource {
   constructor(opts = {}) {
     super()
+    this.updates = opts.updates !== false
     if (!opts.dir) throw new Error('dir required')
     if (!opts.upgrade) throw new Error('upgrade link required')
 
@@ -23,13 +24,22 @@ module.exports = class PearRuntime extends ReadyResource {
     this.name = this.app && path.basename(this.app)
     this.bundled = opts.bundled || !!this.app
 
-    const { drive: upgrade } = link.parse(opts.upgrade)
-    this.key = hid.decode(upgrade.key)
-    this.length = upgrade.length || 0
-    this.fork = upgrade.fork || 0
-    this.link = link.serialize({ drive: { fork: this.fork, length: this.length, key: this.key } })
-    this.store = new Corestore(path.join(this.dir, 'pear-runtime/corestore'))
-    this.drive = new Hyperdrive(this.store, this.key)
+    if (this.updates) {
+      const { drive: upgrade } = link.parse(opts.upgrade)
+      this.key = hid.decode(upgrade.key)
+      this.length = upgrade.length || 0
+      this.fork = upgrade.fork || 0
+      this.link = link.serialize({ drive: { fork: this.fork, length: this.length, key: this.key } })
+      this.store = new Corestore(path.join(this.dir, 'pear-runtime/corestore'))
+      this.drive = new Hyperdrive(this.store, this.key)
+    } else {
+      this.key = null
+      this.length = null
+      this.fork = null
+      this.link = null
+      this.store = null
+      this.drive = null
+    }
 
     this.swarm = null
     this.next = null
@@ -43,7 +53,7 @@ module.exports = class PearRuntime extends ReadyResource {
   async _open() {
     await this.drive.ready()
 
-    if (this.bundled) {
+    if (this.bundled && this.updates !== false) {
       await fs.promises.rm(path.join(this.dir, 'pear-runtime/next'), {
         recursive: true,
         force: true
@@ -86,7 +96,7 @@ module.exports = class PearRuntime extends ReadyResource {
   }
 
   async _update() {
-    if (this.updating) return
+    if (this.updating || this.updates === false) return
     this.updating = true
 
     const length = this.drive.core.length
