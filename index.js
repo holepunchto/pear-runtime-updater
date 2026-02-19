@@ -51,9 +51,10 @@ module.exports = class PearRuntime extends ReadyResource {
   }
 
   async _open() {
+    if (this.updates === false) return
     await this.drive.ready()
 
-    if (this.bundled && this.updates !== false) {
+    if (this.bundled) {
       await fs.promises.rm(path.join(this.dir, 'pear-runtime/next'), {
         recursive: true,
         force: true
