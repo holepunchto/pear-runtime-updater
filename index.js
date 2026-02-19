@@ -15,8 +15,14 @@ module.exports = class PearRuntime extends ReadyResource {
   constructor(config) {
     super()
     this.updates = !!config.update && config.updates !== false
-
     if (!config.dir) throw new Error('dir required')
+    
+    this.dir = config.dir
+    this.version = config.version || 0
+    this.storage = path.join(this.dir, 'app-storage')
+    this.app = config.app
+    this.name = this.app && path.basename(this.app)
+    this.bundled = config.bundled || !!this.app
 
     if (this.updates) {
       const { drive: upgrade } = link.parse(config.upgrade)
