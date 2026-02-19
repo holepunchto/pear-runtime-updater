@@ -4,6 +4,7 @@ const Localdrive = require('localdrive')
 const Corestore = require('corestore')
 const path = require('path')
 const fs = require('fs')
+const fsx = require('fs-native-extensions')
 const ReadyResource = require('ready-resource')
 const link = require('pear-link')
 const hid = require('hypercore-id-encoding')
@@ -13,25 +14,30 @@ const host = platform + '-' + arch
 module.exports = class PearRuntime extends ReadyResource {
   constructor(config) {
     super()
+    this.updates = !!config.update && config.updates !== false
 
-    if (config.updates === false) return {}
     if (!config.dir) throw new Error('dir required')
-    if (!config.link) throw new Error('upgrade link required')
-    const { drive } = link.parse(config.link)
-    this.dir = config.dir
-    this.version = config.version || 0
-    this.key = hid.decode(drive.key)
-    this.length = drive.length || 0
-    this.fork = drive.fork || 0
-    this.link = link.serialize({
-      drive: { fork: this.fork, length: this.length, key: this.key }
-    })
-    this.store = new Corestore(path.join(this.dir, 'pear-runtime/corestore'))
-    this.drive = new Hyperdrive(this.store, this.key)
+
+    if (this.updates) {
+      const { drive: upgrade } = link.parse(config.upgrade)
+      this.key = hid.decode(upgrade.key)
+      this.length = upgrade.length || 0
+      this.fork = upgrade.fork || 0
+      this.link = link.serialize({ drive: { fork: this.fork, length: this.length, key: this.key } })
+      this.store = new Corestore(path.join(this.dir, 'pear-runtime/corestore'))
+      this.drive = new Hyperdrive(this.store, this.key)
+    } else {
+      this.key = null
+      this.length = null
+      this.fork = null
+      this.link = null
+      this.store = null
+      this.drive = null
+    }
+    
     this.swarm = null
     this.next = null
     this.checkout = null
-
     this.updating = false
     this.updated = false
 
@@ -39,24 +45,28 @@ module.exports = class PearRuntime extends ReadyResource {
   }
 
   async _open() {
-    await fs.promises.rm(path.join(this.dir, 'pear-runtime/next'), {
-      recursive: true,
-      force: true
-    })
+    await this.drive?.ready()
 
-    if (!this.swarm) {
-      const keyPair = await this.store.createKeyPair('pear-container')
-      this.swarm = new Hyperswarm({ keyPair })
+    if (this.bundled && this.updates !== false) {
+      await fs.promises.rm(path.join(this.dir, 'pear-runtime/next'), {
+        recursive: true,
+        force: true
+      })
+
+      if (!this.swarm) {
+        const keyPair = await this.store.createKeyPair('pear-container')
+        this.swarm = new Hyperswarm({ keyPair })
+      }
+
+      this.swarm.on('connection', (connection) => this.store.replicate(connection))
+      this.swarm.join(this.drive.core.discoveryKey, {
+        client: true,
+        server: false
+      })
+
+      this._updateBackground()
+      this.drive.core.on('append', () => this._updateBackground())
     }
-
-    this.swarm.on('connection', (connection) => this.store.replicate(connection))
-    this.swarm.join(this.drive.core.discoveryKey, {
-      client: true,
-      server: false
-    })
-
-    this._updateBackground()
-    this.drive.core.on('append', () => this._updateBackground())
   }
 
   async _close() {
@@ -64,6 +74,15 @@ module.exports = class PearRuntime extends ReadyResource {
     await this.checkout?.close()
     await this.store?.destroy()
     await this.swarm?.destroy()
+  }
+
+  async applyUpdate() {
+    if (!this.updated || this.applied || !this.bundled) return
+    this.applied = true
+
+    // mac only for now, linux similar, windows, more pain
+    await fsx.swap(path.join(this.next, 'by-arch', host, 'app', this.name), this.app)
+    await fs.promises.rm(this.next, { recursive: true, force: true })
   }
 
   _updateBackground() {
