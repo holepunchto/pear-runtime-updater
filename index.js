@@ -16,7 +16,7 @@ module.exports = class PearRuntime extends ReadyResource {
     super()
     this.updates = !!config.update && config.updates !== false
     if (!config.dir) throw new Error('dir required')
-    
+
     this.dir = config.dir
     this.version = config.version || 0
     this.storage = path.join(this.dir, 'app-storage')
@@ -40,7 +40,7 @@ module.exports = class PearRuntime extends ReadyResource {
       this.store = null
       this.drive = null
     }
-    
+
     this.swarm = null
     this.next = null
     this.checkout = null
