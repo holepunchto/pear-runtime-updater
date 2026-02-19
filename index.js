@@ -10,7 +10,7 @@ const link = require('pear-link')
 const hid = require('hypercore-id-encoding')
 const { platform, arch } = require('which-runtime')
 const isMobile = platform === 'ios' || platform === 'android'
-const host = isMobile ? platform : platform + '-' + arch
+const host = platform + '-' + arch
 
 module.exports = class PearRuntime extends ReadyResource {
   constructor(opts = {}) {
