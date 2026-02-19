@@ -15,7 +15,7 @@ const PearRuntimeUpdater = require('pear-runtime-updater')
 const path = require('path')
 const { version, upgrade } = require('./package.json')
 
-function getApp(){
+function getApp() {
   return path.join(process.resourcesPath, '../..')
 }
 
