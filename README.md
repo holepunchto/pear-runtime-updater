@@ -8,6 +8,10 @@ npm install pear-runtime-updater
 
 Listens for P2P over-the-air (OTA) updates for [Pear](https://docs.pears.com) apps. Replicates from a pear upgrade link and emits when a new version is available.
 
+## MVP - EXPERIMENTAL
+
+This boilerplate is MVP and Experimental.
+
 ## Usage
 
 ```js
@@ -59,7 +63,7 @@ process.on('beforeExit', () => updater.close())
 
 #### `updater.on('updating')`
 
-Emitted when an update is in progress (download started).
+Emitted when an update is in progress.
 
 #### `updater.on('updating-delta', data)`
 
@@ -79,7 +83,7 @@ Apply the update by swapping the current app with the received build through ato
 
 #### `await updater.close()`
 
-Closes the updater. Call when shutting down the app.
+Shut it down. You should do this when closing your app for best performance.
 
 ## License
 
