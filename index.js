@@ -8,6 +8,7 @@ const fsx = require('fs-native-extensions')
 const ReadyResource = require('ready-resource')
 const link = require('pear-link')
 const hid = require('hypercore-id-encoding')
+const MSIXManager = require('msix-manager')
 const { platform, arch, isWindows } = require('which-runtime')
 const isMobile = platform === 'ios' || platform === 'android'
 const host = platform + '-' + arch
@@ -92,7 +93,6 @@ module.exports = class PearRuntime extends ReadyResource {
     const segments = [this.next, 'by-arch', host, 'app']
     if (!isMobile && !isWindows) segments.push(this.name)
     if (isWindows) {
-      const MSIXManager = require('msix-manager')
       const manager = new MSIXManager()
       const msix = this.name.slice(0, -3) + 'msix'
       await manager.addPackage(...segments, msix)
