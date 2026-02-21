@@ -51,7 +51,7 @@ module.exports = class PearRuntime extends ReadyResource {
   }
 
   async _open() {
-    if (!this.drive) return
+    if (!this.updates) return
     if (this.store === null) {
       this.store = new Corestore(path.join(this.dir, 'pear-runtime/corestore'))
     }
