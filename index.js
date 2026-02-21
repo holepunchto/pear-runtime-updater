@@ -32,17 +32,15 @@ module.exports = class PearRuntime extends ReadyResource {
       this.length = upgrade.length || 0
       this.fork = upgrade.fork || 0
       this.link = link.serialize({ drive: { fork: this.fork, length: this.length, key: this.key } })
-      this.store = new Corestore(path.join(this.dir, 'pear-runtime/corestore'))
-      this.drive = new Hyperdrive(this.store, this.key)
     } else {
       this.key = null
       this.length = null
       this.fork = null
       this.link = null
-      this.store = null
-      this.drive = null
     }
 
+    this.store = null
+    this.drive = null
     this.swarm = null
     this.next = null
     this.checkout = null
@@ -53,7 +51,11 @@ module.exports = class PearRuntime extends ReadyResource {
   }
 
   async _open() {
-    if (!this.updates) return
+    if (!this.drive) return
+    if (this.store === null) {
+      this.store = new Corestore(path.join(this.dir, 'pear-runtime/corestore'))
+    }
+    if (this.drive === null) this.drive = new Hyperdrive(this.store, this.key)
     await this.drive.ready()
 
     if (this.bundled) {
