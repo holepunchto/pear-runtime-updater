@@ -22,7 +22,7 @@ module.exports = class PearRuntime extends ReadyResource {
     this.dir = opts.dir
     this.version = opts.version || 0
     this.app = opts.app
-    this.name = this.app && path.basename(this.app)
+    this.name = isMobile ? opts.name : this.app && path.basename(this.app)
     this.bundled = opts.bundled || !!this.app
 
     if (this.updates) {
@@ -89,9 +89,7 @@ module.exports = class PearRuntime extends ReadyResource {
     this.applied = true
 
     // mac only for now, linux similar, windows, more pain
-    const segments = [this.next, 'by-arch', host, 'app']
-    if (!isMobile) segments.push(this.name)
-    await fsx.swap(path.join(...segments), this.app)
+    await fsx.swap(path.join(this.next, 'by-arch', host, 'app', this.name), this.app)
     await fs.promises.rm(this.next, { recursive: true, force: true })
   }
 
@@ -121,7 +119,7 @@ module.exports = class PearRuntime extends ReadyResource {
     const local = new Localdrive(next)
 
     this.emit('updating')
-    const prefix = `/by-arch/${host}/app${isMobile ? '' : `/${this.name}`}`
+    const prefix = `/by-arch/${host}/app/${this.name}`
     for await (const data of co.mirror(local, { prefix })) {
       this.emit('updating-delta', data)
     }
