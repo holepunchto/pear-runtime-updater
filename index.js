@@ -9,7 +9,6 @@ const ReadyResource = require('ready-resource')
 const link = require('pear-link')
 const hid = require('hypercore-id-encoding')
 const { platform, arch } = require('which-runtime')
-const isMobile = platform === 'ios' || platform === 'android'
 const host = platform + '-' + arch
 
 module.exports = class PearRuntime extends ReadyResource {
@@ -22,7 +21,7 @@ module.exports = class PearRuntime extends ReadyResource {
     this.dir = opts.dir
     this.version = opts.version || 0
     this.app = opts.app
-    this.name = isMobile ? opts.name : this.app && path.basename(this.app)
+    this.name = opts.name ?? (this.app && path.basename(this.app))
     this.bundled = opts.bundled || !!this.app
 
     if (this.updates) {
@@ -123,7 +122,6 @@ module.exports = class PearRuntime extends ReadyResource {
     for await (const data of co.mirror(local, { prefix })) {
       this.emit('updating-delta', data)
     }
-    if (isMobile) await local.put(`${prefix}/package.json`, manifest)
 
     await co.close()
     await local.close()
