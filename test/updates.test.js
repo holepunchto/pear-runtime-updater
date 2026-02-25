@@ -103,7 +103,7 @@ test('updates', async (t) => {
   let stdout = ''
   {
     // TODO: support Windows/MacOS
-    run = spawn(path.join(app, 'out', 'make', 'updater-1.0.0-x64.AppImage'), [], {
+    run = spawn(path.join(app, 'out', 'make', 'updater-1.0.0-x64.AppImage'), ['--appimage-extract-and-run'], {
       cwd: app,
       env: {
         ...env,
