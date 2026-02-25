@@ -1,5 +1,11 @@
 const { app, BrowserWindow, ipcMain } = require('electron')
 
+const CI = !!process.env.CI
+if (CI) {
+  app.commandLine.appendSwitch('headless')
+  app.commandLine.appendSwitch('disable-gpu')
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 800,
@@ -8,10 +14,10 @@ function createWindow() {
       nodeIntegration: true,
       contextIsolation: false
     },
-    offscreen: !!process.env.CI
+    offscreen: CI
   })
 
-  win.webContents.openDevTools()
+  if (!CI) win.webContents.openDevTools()
 
   win.loadFile('index.html')
 }
