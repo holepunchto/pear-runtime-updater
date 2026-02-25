@@ -19,8 +19,8 @@
   ],
   "scripts": {
     "format": "prettier . --write",
-    "test": "prettier . --check && lunte",
-    "lint": "lunte"
+    "test": "bare test/01-updates.js",
+    "lint": "prettier --check . && lunte"
   },
   "imports": {
     "fs": {
@@ -46,8 +46,18 @@
     "which-runtime": "^1.3.2"
   },
   "devDependencies": {
+    "@hyperswarm/testnet": "^3.1.4",
+    "b4a": "^1.8.0",
+    "bare-env": "^3.0.0",
+    "bare-os": "^3.7.0",
+    "bare-subprocess": "^5.2.2",
+    "brittle": "^3.19.1",
     "lunte": "^1.6.0",
+    "pear-build": "^0.0.2",
+    "pear-ipc": "^6.10.0",
+    "pear-updater-bootstrap": "^2.5.0",
     "prettier": "^3.8.1",
-    "prettier-config-holepunch": "^2.0.0"
+    "prettier-config-holepunch": "^2.0.0",
+    "sodium-native": "^5.0.10"
   }
 }
