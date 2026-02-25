@@ -21,4 +21,10 @@ jobs:
     name: Test / ${{ matrix.platform }}
     steps:
       - uses: holepunchto/actions/bare-base@v1
-      - run: npm test
+
+      - name: Install fixture dependencies
+        shell: bash
+        run: for dir in test/fixtures/*/; do (cd "$dir" && npm install --install-links); done
+
+      - name: Run tests
+        run: npm test
