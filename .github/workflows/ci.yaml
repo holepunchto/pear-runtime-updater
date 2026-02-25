@@ -27,4 +27,4 @@ jobs:
         run: for dir in test/fixtures/*/; do (cd "$dir" && npm install --install-links); done
 
       - name: Run tests
-        run: npm test
+        run: ${{ matrix.platform == 'linux' && 'xvfb-run ' || '' }}npm test
