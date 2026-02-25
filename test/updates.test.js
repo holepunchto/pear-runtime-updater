@@ -104,7 +104,7 @@ test('updates', async (t) => {
   {
     // TODO: support Windows/MacOS
     run = spawn(path.join(app, 'out', 'make', 'updater-1.0.0-x64.AppImage'), [], {
-      cwd: staging,
+      cwd: app,
       env: {
         ...env,
         PEAR_BOOTSTRAP: JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`))
