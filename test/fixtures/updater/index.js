@@ -26,7 +26,6 @@ app.whenReady().then(() => {
   })
 })
 
-
 ipcMain.on('log', (event, message) => {
   console.log(message)
 })
