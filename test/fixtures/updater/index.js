@@ -4,6 +4,8 @@ const CI = !!process.env.CI
 if (CI) {
   app.commandLine.appendSwitch('headless')
   app.commandLine.appendSwitch('disable-gpu')
+  app.commandLine.appendSwitch('disable-dev-shm-usage')
+  app.commandLine.appendSwitch('no-sandbox')
 }
 
 function createWindow() {
