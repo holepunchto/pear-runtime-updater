@@ -6,6 +6,7 @@ if (CI) {
   app.commandLine.appendSwitch('disable-gpu')
   app.commandLine.appendSwitch('disable-dev-shm-usage')
   app.commandLine.appendSwitch('no-sandbox')
+  app.disableHardwareAcceleration()
 }
 
 function createWindow() {
@@ -14,9 +15,9 @@ function createWindow() {
     height: 600,
     webPreferences: {
       nodeIntegration: true,
-      contextIsolation: false
+      contextIsolation: false,
+      offscreen: CI
     },
-    offscreen: CI
   })
 
   if (!CI) win.webContents.openDevTools()
