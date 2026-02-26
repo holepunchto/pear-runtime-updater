@@ -23,6 +23,7 @@ module.exports = class PearRuntime extends ReadyResource {
     this.app = opts.app
     this.name = opts.name ?? (this.app && path.basename(this.app))
     if (isWindows) this.name = path.basename(this.name, path.extname(this.name)) + '.msix'
+    this.bootstrap = opts.bootstrap
     this.bundled = opts.bundled || !!this.app
 
     if (this.updates) {
@@ -63,7 +64,7 @@ module.exports = class PearRuntime extends ReadyResource {
 
       if (!this.swarm) {
         const keyPair = await this.store.createKeyPair('pear-container')
-        this.swarm = new Hyperswarm({ keyPair })
+        this.swarm = new Hyperswarm({ keyPair, bootstrap: this.bootstrap })
       }
 
       this.swarm.on('connection', (connection) => this.store.replicate(connection))
