@@ -165,16 +165,11 @@ test('updates', async (t) => {
   t.comment('rebuild app structure')
   await Helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
   if (isLinux) {
-    await Helper.cp(
-      path.join(app, 'out', 'make', 'updater-1.0.1-x64.AppImage'),
-      path.join(staging, 'by-arch', host, 'app', 'updater.AppImage')
-    )
+    appBuildPath = path.join(app, 'out', 'make', `updater-1.0.1-${arch}.AppImage`)
+    await Helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.AppImage'))
   }
   if (isMac) {
-    await Helper.cp(
-      path.join(app, 'out', `updater-${host}`, 'updater.app'),
-      path.join(staging, 'by-arch', host, 'app', 'updater.app')
-    )
+    await Helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.app'))
   }
 
   t.comment('restage')
