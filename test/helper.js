@@ -235,6 +235,14 @@ module.exports = class Helper {
   }
 
   static async cp(src, dst, options = { ignore: ['/pear', '/.git', '/test'] }) {
+    if (fs.statSync(src).isDirectory() === false) {
+      const dstDir = path.dirname(dst)
+      if (fs.existsSync(dstDir) === false) fs.mkdirSync(dstDir, { recursive: true })
+      fs.copyFileSync(src, dst)
+      return
+    }
+
+    if (!fs.existsSync(dst)) fs.mkdirSync(dst, { recursive: true })
     const mirror = new Localdrive(src).mirror(new Localdrive(dst), {
       prune: false,
       ...options
