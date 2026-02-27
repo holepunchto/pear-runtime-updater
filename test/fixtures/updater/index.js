@@ -6,10 +6,7 @@ const pkg = require('./package.json')
 const { version, upgrade } = pkg
 
 const CI = !!process.env.CI
-if (CI) {
-  app.commandLine.appendSwitch('disable-gpu')
-  app.disableHardwareAcceleration()
-}
+if (CI) app.disableHardwareAcceleration()
 
 function createWindow() {
   const win = new BrowserWindow({
