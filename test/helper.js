@@ -21,8 +21,8 @@ module.exports = class Helper {
     return Math.random().toString(16).slice(2)
   }
 
-  static tmpDir(suffix = Helper.getRandomId()) {
-    return path.join(os.tmpdir(), `pear-test-${suffix}`)
+  static tmpDir(name = '', suffix = Helper.getRandomId()) {
+    return path.join(os.tmpdir(), `pear-test-${name ? name + '-' : ''}${suffix}`)
   }
 
   static async bootstrap(dir, key, bootstrap = undefined) {
