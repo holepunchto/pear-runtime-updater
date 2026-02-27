@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron')
+const { app, BrowserWindow } = require('electron')
 const { isLinux } = require('which-runtime')
 const path = require('path')
 const Updater = require('pear-runtime-updater')
