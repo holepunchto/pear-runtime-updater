@@ -49,6 +49,10 @@ app.on('window-all-closed', () => {
     app.quit()
   }
 })
+
+process.on('SIGTERM', () => {
+  app.quit()
+})
 ;(async () => {
   console.log('running')
   const updater = await getUpdater()
