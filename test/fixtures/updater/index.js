@@ -53,7 +53,7 @@ process.on('SIGTERM', () => {
   app.quit()
 })
 ;(async () => {
-  console.log('running')
+  console.log(`running ${version} ${upgrade}`)
   updater.on('updating', function () {
     console.log('updating')
   })
@@ -68,8 +68,6 @@ process.on('SIGTERM', () => {
 
     app.quit()
   })
-
-  console.log('started', version, upgrade)
 
   if (version === '1.0.1') {
     app.exit()

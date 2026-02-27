@@ -253,7 +253,7 @@ test('updates', async (t) => {
     t.comment('waiting for version')
     const startedVersion = new Promise((resolve) => {
       run.stdout.on('data', (data) => {
-        if (data.toString().startsWith('started')) {
+        if (data.toString().startsWith('running')) {
           return data.split(' ')[1]
         }
       })
