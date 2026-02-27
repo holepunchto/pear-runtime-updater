@@ -25,9 +25,8 @@ const stageOpts = (id, dir, link) => ({
   dryRun: false,
   ignore: []
 })
-const releaseOpts = (id, key) => ({
-  channel: `test-${id}`,
-  name: `test-${id}`,
+const releaseOpts = (link, key) => ({
+  link,
   key
 })
 
@@ -87,6 +86,14 @@ test('updates', async (t) => {
     t.teardown(() => Helper.teardownStream(stage))
     const staged = await Helper.pick(stage, { tag: 'final' })
     t.ok(staged.success, 'stage succeeded')
+  }
+
+  t.comment('release')
+  {
+    const release = await ipc.release(releaseOpts(link, key))
+    t.teardown(() => Helper.teardownStream(release))
+    const released = await Helper.pick(release, { tag: 'final' })
+    t.ok(released.success, 'release succeeded')
   }
 
   t.comment('seed')
@@ -156,6 +163,14 @@ test('updates', async (t) => {
     t.teardown(() => Helper.teardownStream(stage))
     const staged = await Helper.pick(stage, { tag: 'final' })
     t.ok(staged.success, 'stage succeeded')
+  }
+
+  t.comment('rerelease')
+  {
+    const release = await ipc.release(releaseOpts(link, key))
+    t.teardown(() => Helper.teardownStream(release))
+    const released = await Helper.pick(release, { tag: 'final' })
+    t.ok(released.success, 'rerelease succeeded')
   }
 
   t.comment('check for update message')
