@@ -554,16 +554,6 @@ test('should receive and apply update when update happens while app is not runni
   }
 
   t.comment('restage')
-  const updated = new Promise((resolve) =>
-    run.stdout.on('data', (data) => {
-      if (data.toString().includes('updated')) resolve()
-    })
-  )
-  const applied = new Promise((resolve) =>
-    run.stdout.on('data', (data) => {
-      if (data.toString().includes('applied')) resolve()
-    })
-  )
   {
     const stage = await ipc.stage(stageOpts(id, staging, link))
     t.teardown(() => Helper.teardownStream(stage))
@@ -610,6 +600,16 @@ test('should receive and apply update when update happens while app is not runni
     stdio: 'pipe'
   })
   let exit = Helper.waitForExit(run)
+  const updated = new Promise((resolve) =>
+    run.stdout.on('data', (data) => {
+      if (data.toString().includes('updated')) resolve()
+    })
+  )
+  const applied = new Promise((resolve) =>
+    run.stdout.on('data', (data) => {
+      if (data.toString().includes('applied')) resolve()
+    })
+  )
 
   t.comment('check for update message')
   await t.execution(updated, 'got updated message')
