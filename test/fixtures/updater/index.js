@@ -56,7 +56,6 @@ async function startUpdater() {
   const bootstrap = JSON.parse(process.env.PEAR_BOOTSTRAP || '[]')
   const updater = new Updater({
     dir,
-    name: 'updater',
     app: appPath,
     bootstrap,
     updates: true,
@@ -75,10 +74,8 @@ async function startUpdater() {
   updater.on('updated', async function () {
     console.log('updated')
 
-    if (isMac) {
-      await updater.applyUpdate()
-      console.log('applied')
-    }
+    await updater.applyUpdate()
+    console.log('applied')
 
     app.quit()
   })

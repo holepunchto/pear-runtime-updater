@@ -210,38 +210,34 @@ test('updates', async (t) => {
   await updated
   t.pass('got updated message')
 
-  if (isMac) {
-    t.comment('check for update applied message')
-    await applied
-    t.pass('update applied')
-  }
+  t.comment('check for update applied message')
+  await applied
+  t.pass('update applied')
 
   t.comment('wait for exit')
   await exit
 
-  if (isMac) {
-    t.comment('rerun app')
-    run = spawn(runParams.execPath, runParams.args, {
-      cwd: app,
-      env: runParams.env,
-      stdio: 'pipe'
+  t.comment('rerun app')
+  run = spawn(runParams.execPath, runParams.args, {
+    cwd: app,
+    env: runParams.env,
+    stdio: 'pipe'
+  })
+  exit = Helper.waitForExit(run)
+
+  t.comment('wait for version')
+  const startedVersion = new Promise((resolve) => {
+    run.stdout.on('data', (data) => {
+      const dataStr = data.toString()
+      if (dataStr.startsWith('running')) {
+        resolve(dataStr.split(' ')[1])
+      }
     })
-    exit = Helper.waitForExit(run)
+  })
 
-    t.comment('waiting for version')
-    const startedVersion = new Promise((resolve) => {
-      run.stdout.on('data', (data) => {
-        const dataStr = data.toString()
-        if (dataStr.startsWith('running')) {
-          resolve(dataStr.split(' ')[1])
-        }
-      })
-    })
+  t.is(await startedVersion, '1.0.1', 'version matches updated value (1.0.1)')
 
-    t.is(await startedVersion, '1.0.1', 'version matches updated value (1.0.1)')
-
-    await exit
-  }
+  await exit
 })
 
 test.hook('cleanup', async (t) => {
