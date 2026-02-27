@@ -40,9 +40,7 @@ app.whenReady().then(() => {
   })
 })
 
-ipcMain.on('log', (event, message) => {
-  console.log(message)
-})
+const updater = getUpdater()
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -51,22 +49,23 @@ app.on('window-all-closed', () => {
 })
 
 process.on('SIGTERM', () => {
+  console.log('app got sigterm')
   app.quit()
 })
 ;(async () => {
   console.log('running')
-  const updater = await getUpdater()
   updater.on('updating', function () {
     console.log('updating')
   })
   updater.on('updated', function () {
     console.log('updated')
+    app.quit()
   })
 
   console.log('started', version, upgrade)
 })()
 
-async function getUpdater() {
+function getUpdater() {
   const appPath = getAppPath()
   const dir = process.env.PEAR_APPDIR
   const bootstrap = JSON.parse(process.env.PEAR_BOOTSTRAP || '[]')
