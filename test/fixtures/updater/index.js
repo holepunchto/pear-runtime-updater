@@ -7,10 +7,7 @@ const { version, upgrade } = pkg
 
 const CI = !!process.env.CI
 if (CI) {
-  app.commandLine.appendSwitch('headless')
   app.commandLine.appendSwitch('disable-gpu')
-  app.commandLine.appendSwitch('disable-dev-shm-usage')
-  app.commandLine.appendSwitch('no-sandbox')
   app.disableHardwareAcceleration()
 }
 
@@ -46,11 +43,6 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
-})
-
-process.on('SIGTERM', () => {
-  console.log('app got sigterm')
-  app.quit()
 })
 ;(async () => {
   console.log(`running ${version} ${upgrade}`)
