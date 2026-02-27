@@ -124,8 +124,16 @@ test('updates', async (t) => {
       execPath = path.join(app, 'out', 'make', 'updater-1.0.0-x64.AppImage')
     }
     if (isMac) {
-      args = [path.join(app, 'out', `updater-${host}`, 'updater.app')]
-      execPath = 'open'
+      args = ['--no-sandbox']
+      execPath = path.join(
+        app,
+        'out',
+        `updater-${host}`,
+        'updater.app',
+        'Contents',
+        'MacOS',
+        'updater'
+      )
     }
 
     run = spawn(execPath, args, {
