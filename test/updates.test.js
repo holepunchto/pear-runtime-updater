@@ -34,17 +34,16 @@ const releaseOpts = (link, key) => ({
 
 test('updates', async (t) => {
   t.timeout(180_000)
-  t.comment(`running tests on ${host}`)
 
   t.comment('connect to IPC')
   const ipc = await Helper.connect(dir)
   t.teardown(() => ipc.close())
 
-  t.comment('touch')
+  t.comment('touch pear link')
   const touch = ipc.touch()
   t.teardown(() => Helper.teardownStream(touch))
   const touched = await Helper.pick(touch, { tag: 'final' })
-  t.ok(touched.success, `successfully touched ${touched.link}`)
+  t.ok(touched.success, `touched ${touched.link}`)
   const { key, link } = touched
 
   t.comment('prepare copy of fixture')
@@ -63,7 +62,7 @@ test('updates', async (t) => {
   t.comment('build app')
   {
     const child = spawn('npm', ['run', 'make'], { cwd: app })
-    await Helper.waitForExit(child)
+    await t.execution(Helper.waitForExit(child), 'app built successfully')
   }
 
   t.comment('copy build to run dir')
@@ -82,9 +81,9 @@ test('updates', async (t) => {
   }
 
   t.comment('build app structure')
+  // TODO: replace with pear-build when single file is supported
   const staging = Helper.tmpDir('staging')
   t.teardown(() => Helper.gc(staging))
-  // TODO: replace with pear-build when single file is supported
   await Helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
   if (isLinux) {
     await Helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.AppImage'))
@@ -99,7 +98,7 @@ test('updates', async (t) => {
     const stage = await ipc.stage(stageOpts(id, staging, link))
     t.teardown(() => Helper.teardownStream(stage))
     const staged = await Helper.pick(stage, { tag: 'final' })
-    t.ok(staged.success, 'stage succeeded')
+    t.ok(staged.success, 'staged successfully')
   }
 
   t.comment('release')
@@ -107,7 +106,7 @@ test('updates', async (t) => {
     const release = await ipc.release(releaseOpts(link, key))
     t.teardown(() => Helper.teardownStream(release))
     const released = await Helper.pick(release, { tag: 'final' })
-    t.ok(released.success, 'release succeeded')
+    t.ok(released.success, 'released successfully')
   }
 
   t.comment('seed')
@@ -157,10 +156,10 @@ test('updates', async (t) => {
     await Helper.writeJSON(path.join(app, 'package.json'), pkg)
   }
 
-  t.comment('rebuild')
+  t.comment('rebuild app')
   {
     const child = spawn('npm', ['run', 'make'], { cwd: app })
-    await Helper.waitForExit(child)
+    await t.execution(Helper.waitForExit(child), 'app rebuilt successfully')
   }
 
   t.comment('rebuild app structure')
@@ -195,7 +194,7 @@ test('updates', async (t) => {
     const stage = await ipc.stage(stageOpts(id, staging, link))
     t.teardown(() => Helper.teardownStream(stage))
     const staged = await Helper.pick(stage, { tag: 'final' })
-    t.ok(staged.success, 'stage succeeded')
+    t.ok(staged.success, 'restaged successfully')
   }
 
   t.comment('rerelease')
@@ -203,19 +202,17 @@ test('updates', async (t) => {
     const release = await ipc.release(releaseOpts(link, key))
     t.teardown(() => Helper.teardownStream(release))
     const released = await Helper.pick(release, { tag: 'final' })
-    t.ok(released.success, 'rerelease succeeded')
+    t.ok(released.success, 'rereleased successfully')
   }
 
   t.comment('check for update message')
-  await updated
-  t.pass('got updated message')
+  await t.execution(updated, 'got updated message')
 
   t.comment('check for update applied message')
-  await applied
-  t.pass('update applied')
+  await t.execution(applied, 'got applied message')
 
   t.comment('wait for exit')
-  await exit
+  await t.execution(await exit, 'app exited successfully')
 
   t.comment('rerun app')
   run = spawn(runParams.execPath, runParams.args, {
@@ -237,7 +234,7 @@ test('updates', async (t) => {
 
   t.is(await startedVersion, '1.0.1', 'version matches updated value (1.0.1)')
 
-  await exit
+  await t.execution(await exit, 'app exited successfully')
 })
 
 test.hook('cleanup', async (t) => {
