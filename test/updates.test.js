@@ -1,5 +1,8 @@
 const test = require('brittle')
-const { spawn } = require('bare-subprocess')
+const {
+  spawn,
+  constants: { SIGTERM }
+} = require('bare-subprocess')
 const Helper = require('./helper')
 const path = require('bare-path')
 const env = require('bare-env')
@@ -188,13 +191,14 @@ test('updates', async (t) => {
   await updated
   t.pass('updated')
 
-  // apply update
-  // - exit the app
-  t.comment('exit')
-  await exit
-  // - rerun the app
+  // TODO: apply update
 
-  // check for update applied
+  t.comment('exit')
+  run.kill(SIGTERM)
+  await exit
+
+  // TODO: rerun the app
+  // TODO: check for update applied
   // - assert that the app has printed an update applied message
 
   t.comment('done')
