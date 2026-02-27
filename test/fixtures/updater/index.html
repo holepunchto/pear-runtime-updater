@@ -6,32 +6,7 @@
   <body>
     <h1>Hello World from Electron Forge</h1>
     <script>
-      const PearRuntime = require('pear-runtime')
-      const path = require('path')
-      const Corestore = require('corestore')
-      const Hyperswarm = require('hyperswarm')
-      const { version, upgrade } = require('./package.json')
-      const { ipcRenderer } = require('electron')
-
-      ;(async () => {
-        const dir = process.resourcesPath
-        const store = new Corestore(path.join(dir, 'pear-runtime/corestore'))
-        const keyPair = await store.createKeyPair('pear-container')
-        const bootstrap = JSON.parse(process.env.PEAR_BOOTSTRAP || '[]')
-        const swarm = new Hyperswarm({ keyPair, bootstrap })
-        const app = new PearRuntime({ dir, version, upgrade, swarm })
-
-        app.on('updating', function () {
-          ipcRenderer.send('log', 'updating')
-        })
-
-        app.on('updated', function () {
-          ipcRenderer.send('log', 'updated')
-        })
-
-        ipcRenderer.send('log', `started ${version}`)
-        console.log('started', version, upgrade)
-      })()
+      console.log('Hello world')
     </script>
   </body>
 </html>
