@@ -147,7 +147,7 @@ test('updates', async (t) => {
     run = spawn(runParams.execPath, runParams.args, {
       cwd: app,
       env: runParams.env,
-      stdio: 'ignore'
+      stdio: 'pipe'
     })
     exit = Helper.waitForExit(run)
   }
@@ -227,7 +227,7 @@ test('updates', async (t) => {
     run = spawn(runParams.execPath, runParams.args, {
       cwd: app,
       env: runParams.env,
-      stdio: 'ignore'
+      stdio: 'pipe'
     })
     exit = Helper.waitForExit(run)
 
