@@ -3,7 +3,7 @@ const { spawn } = require('bare-subprocess')
 const Helper = require('./helper')
 const path = require('bare-path')
 const env = require('bare-env')
-const { isLinux } = require('which-runtime')
+const { isLinux, isMac } = require('which-runtime')
 
 const fixture = Helper.fixture('updater')
 let dir, testnet
@@ -71,7 +71,13 @@ test('updates', async (t) => {
     if (isLinux) {
       await Helper.cp(
         path.join(app, 'out', 'make', 'updater-1.0.0-x64.AppImage'),
-        path.join(staging, 'linux', 'app', 'updater', 'updater-1.0.0-x64.AppImage')
+        path.join(staging, 'by-arch', 'linux-x64', 'app', 'updater.AppImage')
+      )
+    }
+    if (isMac) {
+      await Helper.cp(
+        path.join(app, 'out', 'updater-darwin-x64', 'updater.app'),
+        path.join(staging, 'by-arch', 'darwin-x64', 'app', 'updater.app')
       )
     }
   }
@@ -145,13 +151,19 @@ test('updates', async (t) => {
   }
 
   // TODO: replace with pear-build when single file is supported
-  t.comment('build app structure')
+  t.comment('rebuild app structure')
   {
     await Helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
     if (isLinux) {
       await Helper.cp(
         path.join(app, 'out', 'make', 'updater-1.0.1-x64.AppImage'),
-        path.join(staging, 'linux', 'app', 'updater', 'updater-1.0.1-x64.AppImage')
+        path.join(staging, 'by-arch', 'linux-x64', 'app', 'updater.AppImage')
+      )
+    }
+    if (isMac) {
+      await Helper.cp(
+        path.join(app, 'out', 'updater-darwin-x64', 'updater.app'),
+        path.join(staging, 'by-arch', 'darwin-x64', 'app', 'updater')
       )
     }
   }
