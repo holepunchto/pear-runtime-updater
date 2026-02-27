@@ -1,5 +1,5 @@
 const { app, BrowserWindow, ipcMain } = require('electron')
-const { isMac, isLinux } = require('which-runtime')
+const { isLinux } = require('which-runtime')
 const path = require('path')
 const Updater = require('pear-runtime-updater')
 const pkg = require('./package.json')

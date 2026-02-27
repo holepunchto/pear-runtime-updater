@@ -13,6 +13,64 @@ const Localdrive = require('localdrive')
 
 const MAX_OP_STEP_WAIT = env.CI ? 360000 : 120000
 
+class Reiterate {
+  constructor(stream) {
+    this.stream = stream
+    this.complete = false
+    this.buffer = []
+    this.readers = []
+
+    this._ondata = this._ondata.bind(this)
+    this._onend = this._onend.bind(this)
+    this.onerror = this._onerror.bind(this)
+
+    this.stream.on('data', this._ondata)
+    this.stream.on('end', this._onend)
+    this.stream.on('error', this._onerror)
+  }
+
+  _ondata(value) {
+    this.buffer.push({ value, done: false })
+    for (const { resolve } of this.readers) resolve()
+    this.readers.length = 0
+  }
+
+  _onend() {
+    this.buffer.push({ done: true })
+    this.complete = true
+    for (const { resolve } of this.readers) resolve()
+    this.readers.length = 0
+  }
+
+  _onerror(err) {
+    for (const { reject } of this.readers) reject(err)
+    this.readers.length = 0
+  }
+
+  async *_tail() {
+    try {
+      let i = 0
+      while (i < this.buffer.length || !this.complete) {
+        if (i < this.buffer.length) {
+          const { value, done } = this.buffer[i++]
+          if (done) break
+          yield value
+        } else {
+          await new Promise((resolve, reject) => this.readers.push({ resolve, reject }))
+        }
+      }
+    } finally {
+      this.stream.off('data', this._ondata)
+      this.stream.off('end', this._onend)
+      this.stream.off('error', this._onerror)
+    }
+  }
+
+  [Symbol.asyncIterator]() {
+    return this._tail()
+  }
+}
+
 module.exports = class Helper {
   static host = `${platform}-${arch}`
   static byArch = path.join('by-arch', Helper.host, 'bin', `pear-runtime${isWindows ? '.exe' : ''}`)
