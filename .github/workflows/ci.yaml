@@ -28,9 +28,5 @@ jobs:
         shell: bash
         run: for dir in test/fixtures/*/; do (cd "$dir" && npm install --install-links); done
 
-      - name: Install electron dependencies
-        if: matrix.platform == 'linux'
-        run: sudo apt-get update && sudo apt-get install -y libgtk-3-0 libnss3 libasound2t64 libxss1 libgbm1
-
       - name: Run tests
         run: ${{ matrix.platform == 'linux' && 'xvfb-run ' || '' }}npm test
