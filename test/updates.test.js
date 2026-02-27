@@ -67,7 +67,7 @@ test('updates', async (t) => {
   }
 
   t.comment('copy build to run dir')
-  let runDir = Helper.tmpDir('run')
+  const runDir = Helper.tmpDir('run')
   let appBuildPath
   let appRunPath
   if (isLinux) {
