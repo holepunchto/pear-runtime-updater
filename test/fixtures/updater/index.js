@@ -1,13 +1,10 @@
 const { app, BrowserWindow, ipcMain } = require('electron')
 const { isMac, isLinux } = require('which-runtime')
-const os = require('os')
 const path = require('path')
-const PearRuntime = require('pear-runtime')
+const Updater = require('pear-runtime-updater')
 const pkg = require('./package.json')
-const { name, productName, version, upgrade } = pkg
+const { version, upgrade } = pkg
 
-let pear
-const appName = productName ?? name
 const CI = !!process.env.CI
 if (CI) {
   app.commandLine.appendSwitch('headless')
@@ -25,7 +22,7 @@ function createWindow() {
       nodeIntegration: true,
       contextIsolation: false,
       offscreen: CI
-    },
+    }
   })
 
   if (!CI) win.webContents.openDevTools()
@@ -52,32 +49,24 @@ app.on('window-all-closed', () => {
     app.quit()
   }
 })
-
 ;(async () => {
   console.log('running')
-  const pear = await getPear()
-  pear.updater.on('updating', function () { console.log('updating') })
-  pear.updater.on('updated', function () { console.log('updated') })
+  const updater = await getUpdater()
+  updater.on('updating', function () {
+    console.log('updating')
+  })
+  updater.on('updated', function () {
+    console.log('updated')
+  })
 
   console.log('started', version, upgrade)
 })()
 
-async function getPear() {
-  if (pear) return pear
+async function getUpdater() {
   const appPath = getAppPath()
-  let dir = null
-  if (appPath === null) {
-    dir = path.join(os.tmpdir(), 'pear', appName)
-  } else {
-    dir = isMac
-      ? path.join(os.homedir(), 'Library', 'Application Support', appName)
-      : isLinux
-        ? path.join(os.homedir(), '.config', appName)
-        : path.join(os.homedir(), 'AppData', 'Roaming', appName)
-  }
+  const dir = process.env.PEAR_APPDIR
   const bootstrap = JSON.parse(process.env.PEAR_BOOTSTRAP || '[]')
-  pear = new PearRuntime({ dir, app: appPath, bootstrap, updates: true, version, upgrade })
-  return pear
+  return new Updater({ dir, app: appPath, bootstrap, updates: true, version, upgrade })
 }
 
 function getAppPath() {

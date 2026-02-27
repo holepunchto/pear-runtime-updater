@@ -3,6 +3,7 @@ const { spawn } = require('bare-subprocess')
 const Helper = require('./helper')
 const path = require('bare-path')
 const env = require('bare-env')
+const { isLinux } = require('which-runtime')
 
 const fixture = Helper.fixture('updater')
 let dir, testnet
@@ -110,11 +111,16 @@ test('updates', async (t) => {
   let stdout = ''
   {
     // TODO: support Windows/MacOS
-    run = spawn(path.join(app, 'out', 'make', 'updater-1.0.0-x64.AppImage'), ['--appimage-extract-and-run'], {
+    const appDir = Helper.tmpDir(`appdir-${Helper.getRandomId()}`)
+    t.teardown(() => Helper.gc(appDir))
+    const appImagePath = path.join(app, 'out', 'make', 'updater-1.0.0-x64.AppImage')
+    run = spawn(appImagePath, ['--appimage-extract-and-run'], {
       cwd: app,
       env: {
         ...env,
-        PEAR_BOOTSTRAP: JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`))
+        PEAR_BOOTSTRAP: JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`)),
+        PEAR_APPDIR: appDir,
+        ...(isLinux ? { APPIMAGE: appImagePath } : {})
       },
       stdio: ['pipe', 'pipe', 'pipe']
     })
