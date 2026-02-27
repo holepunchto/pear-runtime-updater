@@ -338,6 +338,12 @@ test('should receive and apply update with delayed seeding', async (t) => {
     env: runParams.env,
     stdio: 'pipe'
   })
+  run.stdout.on('data', (data) => {
+    console.log('stdout', data.toString())
+  })
+  run.stderr.on('data', (data) => {
+    console.log('stderr', data.toString())
+  })
   let exit = Helper.waitForExit(run)
 
   t.comment('update app version')
@@ -391,8 +397,8 @@ test('should receive and apply update with delayed seeding', async (t) => {
   }
 
   t.comment('delaying seed')
-  const result = Promise.race([
-    updated,
+  const result = await Promise.race([
+    updated.then(() => 'got-update'),
     new Promise((resolve) => setTimeout(() => resolve('timed-out'), 3000))
   ])
   t.is(result, 'timed-out', 'should not update before seed starts')
