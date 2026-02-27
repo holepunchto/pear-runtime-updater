@@ -110,22 +110,22 @@ test('updates', async (t) => {
   }
 
   t.comment('run')
+  let runParams = { args: [] }
   let run
   let exit
-  let stdout = ''
   {
     // TODO: support Windows/MacOS
     const appDir = Helper.tmpDir(`appdir-${Helper.getRandomId()}`)
+    runParams.appDir = appDir
     t.teardown(() => Helper.gc(appDir))
-    let execPath
-    let args = []
+
     if (isLinux) {
-      args = ['--appimage-extract-and-run', '--no-sandbox']
-      execPath = path.join(app, 'out', 'make', 'updater-1.0.0-x64.AppImage')
+      runParams.args = ['--appimage-extract-and-run', '--no-sandbox']
+      runParams.execPath = path.join(app, 'out', 'make', 'updater-1.0.0-x64.AppImage')
     }
     if (isMac) {
-      args = ['--no-sandbox']
-      execPath = path.join(
+      runParams.args = ['--no-sandbox']
+      runParams.execPath = path.join(
         app,
         'out',
         `updater-${host}`,
@@ -136,19 +136,20 @@ test('updates', async (t) => {
       )
     }
 
-    run = spawn(execPath, args, {
+    runParams.env = {
+      ...env,
+      PEAR_BOOTSTRAP: JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`)),
+      PEAR_APPDIR: appDir,
+      ...(isLinux ? { APPIMAGE: runParams.execPath } : {})
+    }
+
+    run = spawn(runParams.execPath, runParams.args, {
       cwd: app,
-      env: {
-        ...env,
-        PEAR_BOOTSTRAP: JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`)),
-        PEAR_APPDIR: appDir,
-        ...(isLinux ? { APPIMAGE: execPath } : {})
-      },
+      env: runParams.env,
       stdio: ['pipe', 'pipe', 'pipe']
     })
     run.stdout.on('data', (data) => {
       console.log('APP STDOUT', data.toString())
-      stdout += data.toString()
     })
     run.stderr.on('data', (data) => {
       console.log('APP STDERR', data.toString())
@@ -194,6 +195,14 @@ test('updates', async (t) => {
       if (data.toString().includes('updated')) resolve()
     })
   )
+  const applied = isMac
+    ? new Promise((resolve) =>
+        run.stdout.on('data', (data) => {
+          if (data.toString().includes('applied')) resolve()
+        })
+      )
+    : Promise.resolve()
+
   {
     const stage = await ipc.stage(stageOpts(id, staging, link))
     t.teardown(() => Helper.teardownStream(stage))
@@ -213,7 +222,11 @@ test('updates', async (t) => {
   await updated
   t.pass('updated')
 
-  // TODO: apply update
+  if (isMac) {
+    t.comment('check for update applied message')
+    await applied
+    t.pass('update applied')
+  }
 
   t.comment('exit')
   await exit
@@ -221,6 +234,35 @@ test('updates', async (t) => {
   // TODO: rerun the app
   // TODO: check for update applied
   // - assert that the app has printed an update applied message
+
+  if (isMac) {
+    t.comment('rerunning app')
+    run = spawn(runParams.execPath, runParams.args, {
+      cwd: app,
+      env: runParams.env,
+      stdio: ['pipe', 'pipe', 'pipe']
+    })
+    run.stdout.on('data', (data) => {
+      console.log('APP STDOUT', data.toString())
+    })
+    run.stderr.on('data', (data) => {
+      console.log('APP STDERR', data.toString())
+    })
+    exit = Helper.waitForExit(run)
+
+    t.comment('waiting for version')
+    const startedVersion = new Promise((resolve) => {
+      run.stdout.on('data', (data) => {
+        if (data.startsWith('started')) {
+          return data.split(' ')[1]
+        }
+      })
+    })
+
+    t.is(await startedVersion, '1.0.1', 'version matches updated value')
+
+    await exit
+  }
 
   t.comment('done')
 })
