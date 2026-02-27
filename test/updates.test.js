@@ -3,7 +3,8 @@ const { spawn } = require('bare-subprocess')
 const Helper = require('./helper')
 const path = require('bare-path')
 const env = require('bare-env')
-const { isLinux, isMac } = require('which-runtime')
+const { isLinux, isMac, platform, arch } = require('which-runtime')
+const host = platform + '-' + arch
 
 const fixture = Helper.fixture('updater')
 let dir, testnet
@@ -33,6 +34,7 @@ const releaseOpts = (link, key) => ({
 
 test('updates', async (t) => {
   t.timeout(180_000)
+  t.comment(`running tests on ${host}`)
 
   t.comment('connect')
   const ipc = await Helper.connect(dir)
@@ -71,13 +73,13 @@ test('updates', async (t) => {
     if (isLinux) {
       await Helper.cp(
         path.join(app, 'out', 'make', 'updater-1.0.0-x64.AppImage'),
-        path.join(staging, 'by-arch', 'linux-x64', 'app', 'updater.AppImage')
+        path.join(staging, 'by-arch', host, 'app', 'updater.AppImage')
       )
     }
     if (isMac) {
       await Helper.cp(
-        path.join(app, 'out', 'updater-darwin-x64', 'updater.app'),
-        path.join(staging, 'by-arch', 'darwin-x64', 'app', 'updater.app')
+        path.join(app, 'out', `updater-${host}`, 'updater.app'),
+        path.join(staging, 'by-arch', host, 'app', 'updater.app')
       )
     }
   }
@@ -122,7 +124,7 @@ test('updates', async (t) => {
       execPath = path.join(app, 'out', 'make', 'updater-1.0.0-x64.AppImage')
     }
     if (isMac) {
-      args = [path.join(app, 'out', 'updater-darwin-x64', 'updater.app')]
+      args = [path.join(app, 'out', `updater-${host}`, 'updater.app')]
       execPath = 'open'
     }
 
@@ -167,13 +169,13 @@ test('updates', async (t) => {
     if (isLinux) {
       await Helper.cp(
         path.join(app, 'out', 'make', 'updater-1.0.1-x64.AppImage'),
-        path.join(staging, 'by-arch', 'linux-x64', 'app', 'updater.AppImage')
+        path.join(staging, 'by-arch', host, 'app', 'updater.AppImage')
       )
     }
     if (isMac) {
       await Helper.cp(
-        path.join(app, 'out', 'updater-darwin-x64', 'updater.app'),
-        path.join(staging, 'by-arch', 'darwin-x64', 'app', 'updater')
+        path.join(app, 'out', `updater-${host}`, 'updater.app'),
+        path.join(staging, 'by-arch', host, 'app', 'updater')
       )
     }
   }
