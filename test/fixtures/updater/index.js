@@ -1,5 +1,5 @@
 const { app, BrowserWindow } = require('electron')
-const { isLinux } = require('which-runtime')
+const { isLinux, isMac } = require('which-runtime')
 const path = require('path')
 const Updater = require('pear-runtime-updater')
 const pkg = require('./package.json')
@@ -57,12 +57,23 @@ process.on('SIGTERM', () => {
   updater.on('updating', function () {
     console.log('updating')
   })
-  updater.on('updated', function () {
+
+  updater.on('updated', async function () {
     console.log('updated')
+
+    if (isMac) {
+      await updater.applyUpdate()
+      console.log('applied')
+    }
+
     app.quit()
   })
 
   console.log('started', version, upgrade)
+
+  if (version === '1.0.1') {
+    app.exit()
+  }
 })()
 
 function getUpdater() {
