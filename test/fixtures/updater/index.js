@@ -32,16 +32,36 @@ app.whenReady().then(() => {
       createWindow()
     }
   })
-})
 
-const updater = getUpdater()
+  startUpdater()
+})
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit()
   }
 })
-;(async () => {
+
+function getAppPath() {
+  if (!app.isPackaged) return null
+  if (isLinux && process.env.APPIMAGE) return process.env.APPIMAGE
+  return path.join(process.resourcesPath, '..', '..')
+}
+
+async function startUpdater() {
+  const appPath = getAppPath()
+  const dir = process.env.PEAR_APPDIR
+  const bootstrap = JSON.parse(process.env.PEAR_BOOTSTRAP || '[]')
+  const updater = new Updater({
+    dir,
+    name: 'updater',
+    app: appPath,
+    bootstrap,
+    updates: true,
+    version,
+    upgrade
+  })
+
   console.log(`running ${version} ${upgrade}`)
   updater.on('updating', function () {
     console.log('updating')
@@ -59,27 +79,6 @@ app.on('window-all-closed', () => {
   })
 
   if (version === '1.0.1') {
-    app.exit()
+    app.quit()
   }
-})()
-
-function getUpdater() {
-  const appPath = getAppPath()
-  const dir = process.env.PEAR_APPDIR
-  const bootstrap = JSON.parse(process.env.PEAR_BOOTSTRAP || '[]')
-  return new Updater({
-    dir,
-    name: 'updater',
-    app: appPath,
-    bootstrap,
-    updates: true,
-    version,
-    upgrade
-  })
-}
-
-function getAppPath() {
-  if (!app.isPackaged) return null
-  if (isLinux && process.env.APPIMAGE) return process.env.APPIMAGE
-  return path.join(process.resourcesPath, '..', '..')
 }
