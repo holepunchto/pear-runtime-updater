@@ -125,6 +125,7 @@ test('updates', async (t) => {
   runParams.appDir = appDir
 
   if (isLinux) {
+    // needed because GHA does not support FUSE and SUID sandboxing
     runParams.args = ['--appimage-extract-and-run', '--no-sandbox']
     runParams.execPath = path.join(appRunPath)
   }
