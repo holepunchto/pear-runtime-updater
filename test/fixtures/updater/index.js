@@ -69,7 +69,15 @@ function getUpdater() {
   const appPath = getAppPath()
   const dir = process.env.PEAR_APPDIR
   const bootstrap = JSON.parse(process.env.PEAR_BOOTSTRAP || '[]')
-  return new Updater({ dir, app: appPath, bootstrap, updates: true, version, upgrade })
+  return new Updater({
+    dir,
+    name: 'updater',
+    app: appPath,
+    bootstrap,
+    updates: true,
+    version,
+    upgrade
+  })
 }
 
 function getAppPath() {
