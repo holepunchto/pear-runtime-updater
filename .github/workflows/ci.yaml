@@ -30,7 +30,7 @@ jobs:
 
       - name: Install electron dependencies
         if: matrix.platform == 'linux'
-        run: sudo apt update && sudo apt install -y libgtk-3-0 libnss3 libasound2t64 libxss1 libgbm1
+        run: sudo apt-get update && sudo apt-get install -y libgtk-3-0 libnss3 libasound2t64 libxss1 libgbm1
 
       - name: Run tests
         run: ${{ matrix.platform == 'linux' && 'xvfb-run ' || '' }}npm test
