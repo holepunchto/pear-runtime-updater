@@ -110,7 +110,7 @@ test('updates', async (t) => {
   }
 
   t.comment('run')
-  let runParams = { args: [] }
+  const runParams = { args: [] }
   let run
   let exit
   {
