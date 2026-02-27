@@ -255,7 +255,7 @@ test('updates', async (t) => {
       run.stdout.on('data', (data) => {
         const dataStr = data.toString()
         if (dataStr.startsWith('running')) {
-          return dataStr.split(' ')[1]
+          resolve(dataStr.split(' ')[1])
         }
       })
     })
