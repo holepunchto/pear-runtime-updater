@@ -120,7 +120,7 @@ test('updates', async (t) => {
     t.teardown(() => Helper.gc(appDir))
 
     if (isLinux) {
-      runParams.args = ['--appimage-extract-and-run']
+      runParams.args = ['--appimage-extract-and-run', '--no-sandbox']
       runParams.execPath = path.join(app, 'out', 'make', 'updater-1.0.0-x64.AppImage')
     }
     if (isMac) {
