@@ -54,7 +54,6 @@
     "bare-subprocess": "^5.2.2",
     "brittle": "^3.19.1",
     "lunte": "^1.6.0",
-    "pear-build": "^0.0.2",
     "pear-ipc": "^6.10.0",
     "pear-updater-bootstrap": "^2.5.0",
     "prettier": "^3.8.1",

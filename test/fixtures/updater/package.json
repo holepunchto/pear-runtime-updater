@@ -20,7 +20,6 @@
     "electron-forge-plugin-universal-prebuilds": "^1.0.0"
   },
   "dependencies": {
-    "pear-runtime": "^0.4.3",
     "pear-runtime-updater": "file:../../.."
   }
 }
