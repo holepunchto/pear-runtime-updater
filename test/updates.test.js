@@ -66,22 +66,31 @@ test('updates', async (t) => {
     await Helper.waitForExit(child)
   }
 
+  t.comment('copy build to run dir')
+  let runDir = Helper.tmpDir('run')
+  let appBuildPath
+  let appRunPath
+  if (isLinux) {
+    appBuildPath = path.join(app, 'out', 'make', `updater-1.0.0-${arch}.AppImage`)
+    appRunPath = path.join(runDir, 'updater.AppImage')
+    await Helper.cp(appBuildPath, appRunPath)
+  }
+  if (isMac) {
+    appBuildPath = path.join(app, 'out', `updater-${host}`, 'updater.app')
+    appRunPath = path.join(runDir, 'updater.app')
+    await Helper.cp(appBuildPath, appRunPath)
+  }
+
   t.comment('build app structure')
   const staging = Helper.tmpDir('staging')
   t.teardown(() => Helper.gc(staging))
   // TODO: replace with pear-build when single file is supported
   await Helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
   if (isLinux) {
-    await Helper.cp(
-      path.join(app, 'out', 'make', `updater-1.0.0-${arch}.AppImage`),
-      path.join(staging, 'by-arch', host, 'app', 'updater.AppImage')
-    )
+    await Helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.AppImage'))
   }
   if (isMac) {
-    await Helper.cp(
-      path.join(app, 'out', `updater-${host}`, 'updater.app'),
-      path.join(staging, 'by-arch', host, 'app', 'updater.app')
-    )
+    await Helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.app'))
   }
 
   t.comment('stage')
@@ -111,46 +120,34 @@ test('updates', async (t) => {
 
   t.comment('run')
   const runParams = { args: [] }
-  let run
-  let exit
-  {
-    // TODO: Support Windows
-    const appDir = Helper.tmpDir('appdir')
-    t.teardown(() => Helper.gc(appDir))
-    runParams.appDir = appDir
+  // TODO: Support Windows
+  const appDir = Helper.tmpDir('appdir')
+  t.teardown(() => Helper.gc(appDir))
+  runParams.appDir = appDir
 
-    if (isLinux) {
-      runParams.args = ['--appimage-extract-and-run', '--no-sandbox']
-      runParams.execPath = path.join(app, 'out', 'make', 'updater-1.0.0-x64.AppImage')
-    }
-
-    if (isMac) {
-      runParams.args = []
-      runParams.execPath = path.join(
-        app,
-        'out',
-        `updater-${host}`,
-        'updater.app',
-        'Contents',
-        'MacOS',
-        'updater'
-      )
-    }
-
-    runParams.env = {
-      ...env,
-      PEAR_BOOTSTRAP: JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`)),
-      PEAR_APPDIR: appDir,
-      ...(isLinux ? { APPIMAGE: runParams.execPath } : {})
-    }
-
-    run = spawn(runParams.execPath, runParams.args, {
-      cwd: app,
-      env: runParams.env,
-      stdio: 'pipe'
-    })
-    exit = Helper.waitForExit(run)
+  if (isLinux) {
+    runParams.args = ['--appimage-extract-and-run', '--no-sandbox']
+    runParams.execPath = path.join(appRunPath)
   }
+
+  if (isMac) {
+    runParams.args = []
+    runParams.execPath = path.join(appRunPath, 'Contents', 'MacOS', 'updater')
+  }
+
+  runParams.env = {
+    ...env,
+    PEAR_BOOTSTRAP: JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`)),
+    PEAR_APPDIR: appDir,
+    ...(isLinux ? { APPIMAGE: runParams.execPath } : {})
+  }
+
+  let run = spawn(runParams.execPath, runParams.args, {
+    cwd: app,
+    env: runParams.env,
+    stdio: 'pipe'
+  })
+  let exit = Helper.waitForExit(run)
 
   t.comment('update app version')
   {
