@@ -174,7 +174,7 @@ test('updates', async (t) => {
   if (isMac) {
     await Helper.cp(
       path.join(app, 'out', `updater-${host}`, 'updater.app'),
-      path.join(staging, 'by-arch', host, 'app', 'updater')
+      path.join(staging, 'by-arch', host, 'app', 'updater.app')
     )
   }
 
