@@ -67,7 +67,7 @@ test('updates', async (t) => {
   }
 
   t.comment('build app structure')
-  const staging = Helper.tmpDir()
+  const staging = Helper.tmpDir('staging')
   t.teardown(() => Helper.gc(staging))
   // TODO: replace with pear-build when single file is supported
   await Helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
@@ -115,7 +115,7 @@ test('updates', async (t) => {
   let exit
   {
     // TODO: Support Windows
-    const appDir = Helper.tmpDir(`appdir-${Helper.getRandomId()}`)
+    const appDir = Helper.tmpDir('appdir')
     t.teardown(() => Helper.gc(appDir))
     runParams.appDir = appDir
 
