@@ -36,19 +36,20 @@ test('updates', async (t) => {
   t.timeout(180_000)
   t.comment(`running tests on ${host}`)
 
-  t.comment('connect')
+  t.comment('connect to IPC')
   const ipc = await Helper.connect(dir)
   t.teardown(() => ipc.close())
 
   t.comment('touch')
-  const touch = ipc.touch({})
+  const touch = ipc.touch()
   t.teardown(() => Helper.teardownStream(touch))
   const touched = await Helper.pick(touch, { tag: 'final' })
   t.ok(touched.success, `successfully touched ${touched.link}`)
   const { key, link } = touched
 
-  t.comment('prepare')
-  const app = Helper.tmpDir()
+  t.comment('prepare copy of fixture')
+  const app = Helper.tmpDir('fixture')
+  t.teardown(() => Helper.gc(app))
   await Helper.cp(fixture, app)
 
   t.comment('update app version and link')
@@ -68,20 +69,19 @@ test('updates', async (t) => {
   t.comment('build app structure')
   const staging = Helper.tmpDir()
   t.teardown(() => Helper.gc(staging))
-  {
-    await Helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
-    if (isLinux) {
-      await Helper.cp(
-        path.join(app, 'out', 'make', 'updater-1.0.0-x64.AppImage'),
-        path.join(staging, 'by-arch', host, 'app', 'updater.AppImage')
-      )
-    }
-    if (isMac) {
-      await Helper.cp(
-        path.join(app, 'out', `updater-${host}`, 'updater.app'),
-        path.join(staging, 'by-arch', host, 'app', 'updater.app')
-      )
-    }
+  // TODO: replace with pear-build when single file is supported
+  await Helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
+  if (isLinux) {
+    await Helper.cp(
+      path.join(app, 'out', 'make', 'updater-1.0.0-x64.AppImage'),
+      path.join(staging, 'by-arch', host, 'app', 'updater.AppImage')
+    )
+  }
+  if (isMac) {
+    await Helper.cp(
+      path.join(app, 'out', `updater-${host}`, 'updater.app'),
+      path.join(staging, 'by-arch', host, 'app', 'updater.app')
+    )
   }
 
   t.comment('stage')
@@ -114,15 +114,16 @@ test('updates', async (t) => {
   let run
   let exit
   {
-    // TODO: support Windows/MacOS
+    // TODO: Support Windows
     const appDir = Helper.tmpDir(`appdir-${Helper.getRandomId()}`)
-    runParams.appDir = appDir
     t.teardown(() => Helper.gc(appDir))
+    runParams.appDir = appDir
 
     if (isLinux) {
       runParams.args = ['--appimage-extract-and-run', '--no-sandbox']
       runParams.execPath = path.join(app, 'out', 'make', 'updater-1.0.0-x64.AppImage')
     }
+
     if (isMac) {
       runParams.args = []
       runParams.execPath = path.join(
@@ -146,13 +147,7 @@ test('updates', async (t) => {
     run = spawn(runParams.execPath, runParams.args, {
       cwd: app,
       env: runParams.env,
-      stdio: ['pipe', 'pipe', 'pipe']
-    })
-    run.stdout.on('data', (data) => {
-      console.log('APP STDOUT', data.toString())
-    })
-    run.stderr.on('data', (data) => {
-      console.log('APP STDERR', data.toString())
+      stdio: 'ignore'
     })
     exit = Helper.waitForExit(run)
   }
@@ -171,22 +166,19 @@ test('updates', async (t) => {
     await Helper.waitForExit(child)
   }
 
-  // TODO: replace with pear-build when single file is supported
   t.comment('rebuild app structure')
-  {
-    await Helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
-    if (isLinux) {
-      await Helper.cp(
-        path.join(app, 'out', 'make', 'updater-1.0.1-x64.AppImage'),
-        path.join(staging, 'by-arch', host, 'app', 'updater.AppImage')
-      )
-    }
-    if (isMac) {
-      await Helper.cp(
-        path.join(app, 'out', `updater-${host}`, 'updater.app'),
-        path.join(staging, 'by-arch', host, 'app', 'updater')
-      )
-    }
+  await Helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
+  if (isLinux) {
+    await Helper.cp(
+      path.join(app, 'out', 'make', 'updater-1.0.1-x64.AppImage'),
+      path.join(staging, 'by-arch', host, 'app', 'updater.AppImage')
+    )
+  }
+  if (isMac) {
+    await Helper.cp(
+      path.join(app, 'out', `updater-${host}`, 'updater.app'),
+      path.join(staging, 'by-arch', host, 'app', 'updater')
+    )
   }
 
   t.comment('restage')
@@ -202,7 +194,6 @@ test('updates', async (t) => {
         })
       )
     : Promise.resolve()
-
   {
     const stage = await ipc.stage(stageOpts(id, staging, link))
     t.teardown(() => Helper.teardownStream(stage))
@@ -220,7 +211,7 @@ test('updates', async (t) => {
 
   t.comment('check for update message')
   await updated
-  t.pass('updated')
+  t.pass('got updated message')
 
   if (isMac) {
     t.comment('check for update applied message')
@@ -228,25 +219,15 @@ test('updates', async (t) => {
     t.pass('update applied')
   }
 
-  t.comment('exit')
+  t.comment('wait for exit')
   await exit
 
-  // TODO: rerun the app
-  // TODO: check for update applied
-  // - assert that the app has printed an update applied message
-
   if (isMac) {
-    t.comment('rerunning app')
+    t.comment('rerun app')
     run = spawn(runParams.execPath, runParams.args, {
       cwd: app,
       env: runParams.env,
-      stdio: ['pipe', 'pipe', 'pipe']
-    })
-    run.stdout.on('data', (data) => {
-      console.log('APP STDOUT', data.toString())
-    })
-    run.stderr.on('data', (data) => {
-      console.log('APP STDERR', data.toString())
+      stdio: 'ignore'
     })
     exit = Helper.waitForExit(run)
 
@@ -260,12 +241,10 @@ test('updates', async (t) => {
       })
     })
 
-    t.is(await startedVersion, '1.0.1', 'version matches updated value')
+    t.is(await startedVersion, '1.0.1', 'version matches updated value (1.0.1)')
 
     await exit
   }
-
-  t.comment('done')
 })
 
 test.hook('cleanup', async (t) => {
