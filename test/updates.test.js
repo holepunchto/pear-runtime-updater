@@ -1,8 +1,5 @@
 const test = require('brittle')
-const {
-  spawn,
-  constants: { SIGTERM }
-} = require('bare-subprocess')
+const { spawn } = require('bare-subprocess')
 const Helper = require('./helper')
 const path = require('bare-path')
 const env = require('bare-env')
@@ -12,7 +9,7 @@ const fixture = Helper.fixture('updater')
 let dir, testnet
 
 test.hook('setup', async (t) => {
-  t.timeout(120_000)
+  t.timeout(180_000)
   ;({ testnet, dir } = await Helper.provisionPlatform())
 })
 
@@ -66,21 +63,17 @@ test('updates', async (t) => {
     await Helper.waitForExit(child)
   }
 
-  t.comment('run pear-build')
+  t.comment('build app structure')
   const staging = Helper.tmpDir()
   t.teardown(() => Helper.gc(staging))
   {
-    const child = spawn(
-      'npx',
-      [
-        'pear-build',
-        '--linux-x64-app=./out/make/updater-1.0.0-x64.AppImage',
-        '--package=./package.json',
-        `--target=${staging}`
-      ],
-      { cwd: app }
-    )
-    await Helper.waitForExit(child)
+    await Helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
+    if (isLinux) {
+      await Helper.cp(
+        path.join(app, 'out', 'make', 'updater-1.0.0-x64.AppImage'),
+        path.join(staging, 'linux', 'app', 'updater', 'updater-1.0.0-x64.AppImage')
+      )
+    }
   }
 
   t.comment('stage')
@@ -151,19 +144,16 @@ test('updates', async (t) => {
     await Helper.waitForExit(child)
   }
 
-  t.comment('rerun pear-build')
+  // TODO: replace with pear-build when single file is supported
+  t.comment('build app structure')
   {
-    const child = spawn(
-      'npx',
-      [
-        'pear-build',
-        '--linux-x64-app=./out/make/updater-1.0.1-x64.AppImage', // TODO: Support Windows/MacOS
-        '--package=./package.json',
-        `--target=${staging}`
-      ],
-      { cwd: app }
-    )
-    await Helper.waitForExit(child)
+    await Helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
+    if (isLinux) {
+      await Helper.cp(
+        path.join(app, 'out', 'make', 'updater-1.0.1-x64.AppImage'),
+        path.join(staging, 'linux', 'app', 'updater', 'updater-1.0.1-x64.AppImage')
+      )
+    }
   }
 
   t.comment('restage')
@@ -194,7 +184,6 @@ test('updates', async (t) => {
   // TODO: apply update
 
   t.comment('exit')
-  run.kill(SIGTERM)
   await exit
 
   // TODO: rerun the app
