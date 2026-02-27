@@ -22,7 +22,7 @@ class Reiterate {
 
     this._ondata = this._ondata.bind(this)
     this._onend = this._onend.bind(this)
-    this.onerror = this._onerror.bind(this)
+    this._onerror = this._onerror.bind(this)
 
     this.stream.on('data', this._ondata)
     this.stream.on('end', this._onend)
