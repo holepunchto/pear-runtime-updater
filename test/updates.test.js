@@ -183,13 +183,11 @@ test('updates', async (t) => {
       if (data.toString().includes('updated')) resolve()
     })
   )
-  const applied = isMac
-    ? new Promise((resolve) =>
-        run.stdout.on('data', (data) => {
-          if (data.toString().includes('applied')) resolve()
-        })
-      )
-    : Promise.resolve()
+  const applied = new Promise((resolve) =>
+    run.stdout.on('data', (data) => {
+      if (data.toString().includes('applied')) resolve()
+    })
+  )
   {
     const stage = await ipc.stage(stageOpts(id, staging, link))
     t.teardown(() => Helper.teardownStream(stage))
