@@ -49,6 +49,8 @@ function getAppPath() {
 }
 
 async function startUpdater() {
+  console.log(`running ${version} ${upgrade}`)
+
   const appPath = getAppPath()
   const dir = process.env.PEAR_APPDIR
   const bootstrap = JSON.parse(process.env.PEAR_BOOTSTRAP || '[]')
@@ -61,8 +63,11 @@ async function startUpdater() {
     version,
     upgrade
   })
+  await updater.ready()
+  app.on('quit', () => {
+    updater.close()
+  })
 
-  console.log(`running ${version} ${upgrade}`)
   updater.on('updating', function () {
     console.log('updating')
   })
