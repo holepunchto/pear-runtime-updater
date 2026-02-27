@@ -159,14 +159,4 @@ module.exports = class Helper {
   static async writeJSON(file, data) {
     await fs.promises.writeFile(file, JSON.stringify(data, null, 2), 'utf-8')
   }
-
-  static async replaceInFile(file, searchValue, replaceValue) {
-    const content = await fs.promises.readFile(file, 'utf-8').catch((err) => {
-      if (err.code === 'ENOENT') return null
-      throw err
-    })
-    if (content === null) throw new Error(`File not found: ${file}`)
-    const updatedContent = content.replace(searchValue, replaceValue)
-    await fs.promises.writeFile(file, updatedContent, 'utf-8')
-  }
 }
