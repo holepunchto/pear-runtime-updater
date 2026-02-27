@@ -73,7 +73,7 @@ test('updates', async (t) => {
   await Helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
   if (isLinux) {
     await Helper.cp(
-      path.join(app, 'out', 'make', 'updater-1.0.0-x64.AppImage'),
+      path.join(app, 'out', 'make', `updater-1.0.0-${arch}.AppImage`),
       path.join(staging, 'by-arch', host, 'app', 'updater.AppImage')
     )
   }
