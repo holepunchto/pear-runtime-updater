@@ -117,7 +117,7 @@ test('updates', async (t) => {
     const appDir = Helper.tmpDir(`appdir-${Helper.getRandomId()}`)
     t.teardown(() => Helper.gc(appDir))
     const appImagePath = path.join(app, 'out', 'make', 'updater-1.0.0-x64.AppImage')
-    run = spawn(appImagePath, ['--appimage-extract-and-run'], {
+    run = spawn(appImagePath, ['--appimage-extract-and-run', '--no-sandbox'], {
       cwd: app,
       env: {
         ...env,
