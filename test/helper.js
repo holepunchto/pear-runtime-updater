@@ -43,17 +43,17 @@ module.exports = class Helper {
   }
 
   static async provisionPlatform() {
-    const dir = Helper.tmpDir()
-    await Helper.bootstrap(dir, Helper.key)
+    const platformDir = Helper.tmpDir()
+    await Helper.bootstrap(platformDir, Helper.key)
     const testnet = await Helper.createTestnet()
     const dhtBootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`).join(',')
-    const runtime = path.join(dir, 'current', Helper.byArch)
+    const runtime = path.join(platformDir, 'current', Helper.byArch)
 
     const pearProcess = spawn(runtime, ['--sidecar', '-M', '--dht-bootstrap', dhtBootstrap], {
       stdio: 'ignore'
     })
 
-    return { testnet, pearProcess, dir, runtime }
+    return { testnet, pearProcess, platformDir, runtime }
   }
 
   static async connect(platformDir, options = {}) {

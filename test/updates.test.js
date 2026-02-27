@@ -7,11 +7,11 @@ const { isLinux, isMac, platform, arch } = require('which-runtime')
 const host = platform + '-' + arch
 
 const fixture = Helper.fixture('updater')
-let dir, testnet
+let platformDir, testnet
 
 test.hook('setup', async (t) => {
   t.timeout(180_000)
-  ;({ testnet, dir } = await Helper.provisionPlatform())
+  ;({ testnet, platformDir } = await Helper.provisionPlatform())
 })
 
 const seedOpts = (id, dir, link) => ({
@@ -36,7 +36,7 @@ test('should receive and apply update when update happens while app is running',
   t.timeout(180_000)
 
   t.comment('connect to IPC')
-  const ipc = await Helper.connect(dir)
+  const ipc = await Helper.connect(platformDir)
   t.teardown(() => ipc.close())
 
   t.comment('touch pear link')
@@ -236,7 +236,7 @@ test.skip('should receive and apply update with delayed seeding', async (t) => {
   t.timeout(180_000)
 
   t.comment('connect to IPC')
-  const ipc = await Helper.connect(dir)
+  const ipc = await Helper.connect(platformDir)
   t.teardown(() => ipc.close())
 
   t.comment('touch pear link')
@@ -448,7 +448,7 @@ test('should receive and apply update when update happens while app is not runni
   t.timeout(180_000)
 
   t.comment('connect to IPC')
-  const ipc = await Helper.connect(dir)
+  const ipc = await Helper.connect(platformDir)
   t.teardown(() => ipc.close())
 
   t.comment('touch pear link')
@@ -644,9 +644,9 @@ test('should receive and apply update when update happens while app is not runni
 })
 
 test.hook('cleanup', async (t) => {
-  const ipc = await Helper.connect(dir)
+  const ipc = await Helper.connect(platformDir)
   t.teardown(() => ipc.close())
   await ipc.shutdown()
   await testnet.destroy()
-  await Helper.gc(dir)
+  await Helper.gc(platformDir)
 })
