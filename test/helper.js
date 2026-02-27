@@ -8,68 +8,7 @@ const b4a = require('b4a')
 const { platform, arch, isWindows } = require('which-runtime')
 const IPC = require('pear-ipc')
 const path = require('bare-path')
-const env = require('bare-env')
 const Localdrive = require('localdrive')
-
-const MAX_OP_STEP_WAIT = env.CI ? 360000 : 120000
-
-class Reiterate {
-  constructor(stream) {
-    this.stream = stream
-    this.complete = false
-    this.buffer = []
-    this.readers = []
-
-    this._ondata = this._ondata.bind(this)
-    this._onend = this._onend.bind(this)
-    this._onerror = this._onerror.bind(this)
-
-    this.stream.on('data', this._ondata)
-    this.stream.on('end', this._onend)
-    this.stream.on('error', this._onerror)
-  }
-
-  _ondata(value) {
-    this.buffer.push({ value, done: false })
-    for (const { resolve } of this.readers) resolve()
-    this.readers.length = 0
-  }
-
-  _onend() {
-    this.buffer.push({ done: true })
-    this.complete = true
-    for (const { resolve } of this.readers) resolve()
-    this.readers.length = 0
-  }
-
-  _onerror(err) {
-    for (const { reject } of this.readers) reject(err)
-    this.readers.length = 0
-  }
-
-  async *_tail() {
-    try {
-      let i = 0
-      while (i < this.buffer.length || !this.complete) {
-        if (i < this.buffer.length) {
-          const { value, done } = this.buffer[i++]
-          if (done) break
-          yield value
-        } else {
-          await new Promise((resolve, reject) => this.readers.push({ resolve, reject }))
-        }
-      }
-    } finally {
-      this.stream.off('data', this._ondata)
-      this.stream.off('end', this._onend)
-      this.stream.off('error', this._onerror)
-    }
-  }
-
-  [Symbol.asyncIterator]() {
-    return this._tail()
-  }
-}
 
 module.exports = class Helper {
   static host = `${platform}-${arch}`
@@ -174,7 +113,6 @@ module.exports = class Helper {
   }
 
   static async pick(stream, ptn = {}, by = 'tag') {
-    if (Array.isArray(ptn)) return this.#untils(stream, ptn, by)
     for await (const output of stream) {
       if (ptn?.[by] !== 'error' && output[by] === 'error') {
         throw new Error(output?.data?.message ?? 'Unknown error')
@@ -182,46 +120,6 @@ module.exports = class Helper {
       if (this.matchesPattern(output, ptn)) return output.data
     }
     return null
-  }
-
-  static #untils(stream, patterns = [], by) {
-    const untils = {}
-    for (const ptn of patterns) {
-      untils[ptn[by]] = new Promise((resolve, reject) => {
-        const timeout = setTimeout(() => {
-          reject(
-            new Error(
-              'Helper: Data Timeout for ' +
-                JSON.stringify(ptn) +
-                ' after ' +
-                MAX_OP_STEP_WAIT +
-                'ms'
-            )
-          )
-        }, MAX_OP_STEP_WAIT)
-        const onclose = () => reject(new Error('Helper: Unexpected close on stream'))
-        const onerror = (err) => reject(err)
-        const ondata = (data) => {
-          if (data === null || data?.tag === 'final') stream.off('close', onclose)
-        }
-        stream.on('data', ondata)
-        stream.on('close', onclose)
-        stream.on('error', onerror)
-        const onpick = (data) => {
-          const result = data === undefined ? true : data
-          resolve(result)
-        }
-        this.pick(new Reiterate(stream), ptn, by)
-          .then(onpick, reject)
-          .finally(() => {
-            clearTimeout(timeout)
-            stream.off('data', ondata)
-            stream.off('close', onclose)
-            stream.off('error', onerror)
-          })
-      })
-    }
-    return untils
   }
 
   static async teardownStream(stream) {
