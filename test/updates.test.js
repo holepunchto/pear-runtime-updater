@@ -115,14 +115,24 @@ test('updates', async (t) => {
     // TODO: support Windows/MacOS
     const appDir = Helper.tmpDir(`appdir-${Helper.getRandomId()}`)
     t.teardown(() => Helper.gc(appDir))
-    const appImagePath = path.join(app, 'out', 'make', 'updater-1.0.0-x64.AppImage')
-    run = spawn(appImagePath, ['--appimage-extract-and-run', '--no-sandbox'], {
+    let execPath
+    let args = []
+    if (isLinux) {
+      args = ['--appimage-extract-and-run', '--no-sandbox']
+      execPath = path.join(app, 'out', 'make', 'updater-1.0.0-x64.AppImage')
+    }
+    if (isMac) {
+      args = [path.join(app, 'out', 'updater-darwin-x64', 'updater.app')]
+      execPath = 'open'
+    }
+
+    run = spawn(execPath, args, {
       cwd: app,
       env: {
         ...env,
         PEAR_BOOTSTRAP: JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`)),
         PEAR_APPDIR: appDir,
-        ...(isLinux ? { APPIMAGE: appImagePath } : {})
+        ...(isLinux ? { APPIMAGE: execPath } : {})
       },
       stdio: ['pipe', 'pipe', 'pipe']
     })
