@@ -115,10 +115,15 @@ test('updates', async (t) => {
       env: {
         ...env,
         PEAR_BOOTSTRAP: JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`))
-      }
+      },
+      stdio: ['pipe', 'pipe', 'pipe']
     })
     run.stdout.on('data', (data) => {
+      console.log('APP STDOUT', data.toString())
       stdout += data.toString()
+    })
+    run.stderr.on('data', (data) => {
+      console.log('APP STDERR', data.toString())
     })
     exit = Helper.waitForExit(run)
   }
