@@ -43,7 +43,7 @@ module.exports = class Helper {
   }
 
   static async provisionPlatform() {
-    const platformDir = Helper.tmpDir()
+    const platformDir = Helper.tmpDir('platform')
     await Helper.bootstrap(platformDir, Helper.key)
     const testnet = await Helper.createTestnet()
     const dhtBootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`).join(',')
