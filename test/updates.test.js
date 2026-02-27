@@ -67,6 +67,7 @@ test('should receive and apply update when update happens while app is running',
 
   t.comment('copy build to run dir')
   const runDir = Helper.tmpDir('run')
+  t.teardown(() => Helper.gc(runDir))
   let appBuildPath
   let appRunPath
   if (isLinux) {
@@ -267,6 +268,7 @@ test.skip('should receive and apply update with delayed seeding', async (t) => {
 
   t.comment('copy build to run dir')
   const runDir = Helper.tmpDir('run')
+  t.teardown(() => Helper.gc(runDir))
   let appBuildPath
   let appRunPath
   if (isLinux) {
@@ -479,6 +481,7 @@ test('should receive and apply update when update happens while app is not runni
 
   t.comment('copy build to run dir')
   const runDir = Helper.tmpDir('run')
+  t.teardown(() => Helper.gc(runDir))
   let appBuildPath
   let appRunPath
   if (isLinux) {
