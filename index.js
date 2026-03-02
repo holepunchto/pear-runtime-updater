@@ -8,7 +8,7 @@ const fsx = require('fs-native-extensions')
 const ReadyResource = require('ready-resource')
 const link = require('pear-link')
 const hid = require('hypercore-id-encoding')
-const { platform, arch } = require('which-runtime')
+const { platform, arch, isWindows } = require('which-runtime')
 const host = platform + '-' + arch
 
 module.exports = class PearRuntime extends ReadyResource {
@@ -22,6 +22,7 @@ module.exports = class PearRuntime extends ReadyResource {
     this.version = opts.version || 0
     this.app = opts.app
     this.name = opts.name ?? (this.app && path.basename(this.app))
+    if (isWindows) this.name = path.basename(this.name, path.extname(this.name)) + '.msix'
     this.bundled = opts.bundled || !!this.app
 
     if (this.updates) {
@@ -87,8 +88,14 @@ module.exports = class PearRuntime extends ReadyResource {
     if (!this.updated || this.applied || !this.bundled) return
     this.applied = true
 
-    // mac only for now, linux similar, windows, more pain
-    await fsx.swap(path.join(this.next, 'by-arch', host, 'app', this.name), this.app)
+    const nextApp = path.join(this.next, 'by-arch', host, 'app', this.name)
+    if (isWindows) {
+      const MSIXManager = require('msix-manager') // require must be here for platform compatibility
+      const manager = new MSIXManager()
+      await manager.addPackage(nextApp)
+    } else {
+      await fsx.swap(nextApp, this.app)
+    }
     await fs.promises.rm(this.next, { recursive: true, force: true })
   }
 
