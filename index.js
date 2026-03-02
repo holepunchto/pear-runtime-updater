@@ -78,10 +78,12 @@ module.exports = class PearRuntime extends ReadyResource {
   }
 
   async _close() {
-    await this.drive?.close()
-    await this.checkout?.close()
-    await this.store?.close()
-    await this.swarm?.destroy()
+    if (this.updates) {
+      await this.drive.close()
+      await this.checkout?.close()
+      await this.store.close()
+      await this.swarm.destroy()
+    }
   }
 
   async applyUpdate() {
