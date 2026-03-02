@@ -53,7 +53,7 @@ async function startUpdater() {
 
   const appPath = getAppPath()
   const dir = process.env.PEAR_APPDIR
-  const bootstrap = JSON.parse(process.env.PEAR_BOOTSTRAP || '[]')
+  const bootstrap = process.env.PEAR_BOOTSTRAP ? JSON.parse(process.env.PEAR_BOOTSTRAP) : undefined
   const updater = new Updater({
     dir,
     app: appPath,
