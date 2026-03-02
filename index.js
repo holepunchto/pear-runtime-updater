@@ -90,7 +90,7 @@ module.exports = class PearRuntime extends ReadyResource {
 
     const nextApp = path.join(this.next, 'by-arch', host, 'app', this.name)
     if (isWindows) {
-      const MSIXManager = require('msix-manager')
+      const MSIXManager = require('msix-manager') // require must be here for platform compatibility
       const manager = new MSIXManager()
       await manager.addPackage(nextApp)
     } else {
