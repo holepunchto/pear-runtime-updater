@@ -19,7 +19,7 @@
   ],
   "scripts": {
     "format": "prettier . --write",
-    "test": "bare test/updates.test.js",
+    "test": "bare test/index.js",
     "lint": "prettier --check . && lunte"
   },
   "imports": {

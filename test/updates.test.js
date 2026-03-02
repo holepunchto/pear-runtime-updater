@@ -31,7 +31,7 @@ const releaseOpts = (id, key) => ({
   key
 })
 
-test('updates', async (t) => {
+test('electron updates', async (t) => {
   t.timeout(180_000)
 
   t.comment('connect')
