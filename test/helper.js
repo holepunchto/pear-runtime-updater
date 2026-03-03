@@ -14,7 +14,7 @@ module.exports = class Helper {
   static host = `${platform}-${arch}`
   static createTestnet = createTestnet
 
-  static MockPlatform = class MockPlatform extends ReadyResource {
+  static Stager = class Stager extends ReadyResource {
     constructor({ dir, bootstrap }) {
       super()
       this.dir = dir

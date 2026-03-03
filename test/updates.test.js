@@ -15,17 +15,17 @@ test('should receive and apply update when update happens while app is running',
   const testnet = await Helper.createTestnet()
   t.teardown(() => testnet.destroy())
 
-  const platformDir = Helper.tmpDir('platform')
-  t.teardown(() => Helper.gc(platformDir))
+  const stagerDir = Helper.tmpDir('platform')
+  t.teardown(() => Helper.gc(stagerDir))
 
-  t.comment('prepare mock platform')
-  const platform = new Helper.MockPlatform({
-    dir: platformDir,
+  t.comment('prepare stager')
+  const stager = new Helper.Stager({
+    dir: stagerDir,
     bootstrap: testnet.nodes.map((e) => `${e.host}:${e.port}`)
   })
-  await platform.ready()
-  t.teardown(() => platform.close())
-  const link = platform.link
+  await stager.ready()
+  t.teardown(() => stager.close())
+  const link = stager.link
   t.ok(link, `prepared ${link}`)
 
   t.comment('prepare copy of fixture')
@@ -76,10 +76,10 @@ test('should receive and apply update when update happens while app is running',
   }
 
   t.comment('stage')
-  await t.execution(platform.stage(staging), 'staged successfully')
+  await t.execution(stager.stage(staging), 'staged successfully')
 
   t.comment('seed')
-  await t.execution(platform.seed(), 'seeded successfully')
+  await t.execution(stager.seed(), 'seeded successfully')
 
   t.comment('run')
   const runParams = { args: [] }
@@ -148,7 +148,7 @@ test('should receive and apply update when update happens while app is running',
       if (data.toString().includes('applied')) resolve()
     })
   )
-  await t.execution(platform.stage(staging), 'restaged successfully')
+  await t.execution(stager.stage(staging), 'restaged successfully')
 
   t.comment('check for update message')
   await t.execution(updated, 'got updated message')
@@ -190,17 +190,17 @@ test.skip('should receive and apply update with delayed seeding', async (t) => {
   const testnet = await Helper.createTestnet()
   t.teardown(() => testnet.destroy())
 
-  const platformDir = Helper.tmpDir('platform')
-  t.teardown(() => Helper.gc(platformDir))
+  const stagerDir = Helper.tmpDir('platform')
+  t.teardown(() => Helper.gc(stagerDir))
 
-  t.comment('prepare mock platform')
-  const platform = new Helper.MockPlatform({
-    dir: platformDir,
+  t.comment('prepare stager')
+  const stager = new Helper.Stager({
+    dir: stagerDir,
     bootstrap: testnet.nodes.map((e) => `${e.host}:${e.port}`)
   })
-  await platform.ready()
-  t.teardown(() => platform.close())
-  const link = platform.link
+  await stager.ready()
+  t.teardown(() => stager.close())
+  const link = stager.link
   t.ok(link, `prepared ${link}`)
 
   t.comment('prepare copy of fixture')
@@ -251,7 +251,7 @@ test.skip('should receive and apply update with delayed seeding', async (t) => {
   }
 
   t.comment('stage')
-  await t.execution(platform.stage(staging), 'staged successfully')
+  await t.execution(stager.stage(staging), 'staged successfully')
 
   t.comment('run')
   const runParams = { args: [] }
@@ -326,7 +326,7 @@ test.skip('should receive and apply update with delayed seeding', async (t) => {
       if (data.toString().includes('applied')) resolve()
     })
   )
-  await t.execution(platform.stage(staging), 'restaged successfully')
+  await t.execution(stager.stage(staging), 'restaged successfully')
 
   t.comment('delaying seed')
   const result = await Promise.race([
@@ -336,7 +336,7 @@ test.skip('should receive and apply update with delayed seeding', async (t) => {
   t.is(result, 'timed-out', 'should not update before seed starts')
 
   t.comment('seed')
-  await t.execution(platform.seed(), 'seeded successfully')
+  await t.execution(stager.seed(), 'seeded successfully')
 
   t.comment('check for update message')
   await t.execution(updated, 'got updated message')
@@ -377,17 +377,17 @@ test('should receive and apply update when update happens while app is not runni
   const testnet = await Helper.createTestnet()
   t.teardown(() => testnet.destroy())
 
-  const platformDir = Helper.tmpDir('platform')
-  t.teardown(() => Helper.gc(platformDir))
+  const stagerDir = Helper.tmpDir('platform')
+  t.teardown(() => Helper.gc(stagerDir))
 
-  t.comment('prepare mock platform')
-  const platform = new Helper.MockPlatform({
-    dir: platformDir,
+  t.comment('prepare stager')
+  const stager = new Helper.Stager({
+    dir: stagerDir,
     bootstrap: testnet.nodes.map((e) => `${e.host}:${e.port}`)
   })
-  await platform.ready()
-  t.teardown(() => platform.close())
-  const link = platform.link
+  await stager.ready()
+  t.teardown(() => stager.close())
+  const link = stager.link
   t.ok(link, `prepared ${link}`)
 
   t.comment('prepare copy of fixture')
@@ -438,10 +438,10 @@ test('should receive and apply update when update happens while app is not runni
   }
 
   t.comment('stage')
-  await t.execution(platform.stage(staging), 'staged successfully')
+  await t.execution(stager.stage(staging), 'staged successfully')
 
   t.comment('seed')
-  await t.execution(platform.seed(), 'seeded successfully')
+  await t.execution(stager.seed(), 'seeded successfully')
 
   t.comment('update app version')
   {
@@ -468,7 +468,7 @@ test('should receive and apply update when update happens while app is not runni
   }
 
   t.comment('restage')
-  await t.execution(platform.stage(staging), 'restaged successfully')
+  await t.execution(stager.stage(staging), 'restaged successfully')
 
   t.comment('run')
   const runParams = { args: [] }
