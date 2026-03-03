@@ -5,6 +5,7 @@ const path = require('bare-path')
 const env = require('bare-env')
 const { isLinux, isMac, platform, arch } = require('which-runtime')
 const fs = require('bare-fs')
+const tmpDir = require('test-tmp')
 const host = platform + '-' + arch
 
 const fixture = path.join(__dirname, 'fixtures', 'updater')
@@ -16,8 +17,7 @@ test('should receive and apply update when update happens while app is running',
   const testnet = await helper.createTestnet()
   t.teardown(() => testnet.destroy())
 
-  const stagerDir = helper.tmpDir('platform')
-  t.teardown(() => helper.gc(stagerDir))
+  const stagerDir = await tmpDir(t, { name: `platform-${helper.getRandomId()}` })
 
   t.comment('prepare stager')
   const stager = new helper.Stager({
@@ -30,8 +30,7 @@ test('should receive and apply update when update happens while app is running',
   t.ok(link, `prepared ${link}`)
 
   t.comment('prepare copy of fixture')
-  const app = helper.tmpDir('fixture')
-  t.teardown(() => helper.gc(app))
+  const app = await tmpDir(t, { name: `fixture-${helper.getRandomId()}` })
   await helper.cp(fixture, app)
 
   t.comment('update app version and link')
@@ -53,8 +52,7 @@ test('should receive and apply update when update happens while app is running',
   }
 
   t.comment('copy build to run dir')
-  const runDir = helper.tmpDir('run')
-  t.teardown(() => helper.gc(runDir))
+  const runDir = await tmpDir(t, { name: `run-${helper.getRandomId()}` })
   let appBuildPath
   let appRunPath
   if (isLinux) {
@@ -70,8 +68,7 @@ test('should receive and apply update when update happens while app is running',
 
   t.comment('build app structure')
   // TODO: replace with pear-build when single file is supported
-  const staging = helper.tmpDir('staging')
-  t.teardown(() => helper.gc(staging))
+  const staging = await tmpDir(t, { name: `staging-${helper.getRandomId()}` })
   await helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
   if (isLinux) {
     await helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.AppImage'))
@@ -89,8 +86,7 @@ test('should receive and apply update when update happens while app is running',
   t.comment('run')
   const runParams = { args: [] }
   // TODO: Support Windows
-  const appDir = helper.tmpDir('appdir')
-  t.teardown(() => helper.gc(appDir))
+  const appDir = await tmpDir(t, { name: `appdir-${helper.getRandomId()}` })
   runParams.appDir = appDir
 
   if (isLinux) {
@@ -198,8 +194,7 @@ test('should receive and apply update when update happens while app is not runni
   const testnet = await helper.createTestnet()
   t.teardown(() => testnet.destroy())
 
-  const stagerDir = helper.tmpDir('platform')
-  t.teardown(() => helper.gc(stagerDir))
+  const stagerDir = await tmpDir(t, { name: `platform-${helper.getRandomId()}` })
 
   t.comment('prepare stager')
   const stager = new helper.Stager({
@@ -212,8 +207,7 @@ test('should receive and apply update when update happens while app is not runni
   t.ok(link, `prepared ${link}`)
 
   t.comment('prepare copy of fixture')
-  const app = helper.tmpDir('fixture')
-  t.teardown(() => helper.gc(app))
+  const app = await tmpDir(t, { name: `fixture-${helper.getRandomId()}` })
   await helper.cp(fixture, app)
 
   t.comment('update app version and link')
@@ -235,8 +229,7 @@ test('should receive and apply update when update happens while app is not runni
   }
 
   t.comment('copy build to run dir')
-  const runDir = helper.tmpDir('run')
-  t.teardown(() => helper.gc(runDir))
+  const runDir = await tmpDir(t, { name: `run-${helper.getRandomId()}` })
   let appBuildPath
   let appRunPath
   if (isLinux) {
@@ -252,8 +245,7 @@ test('should receive and apply update when update happens while app is not runni
 
   t.comment('build app structure')
   // TODO: replace with pear-build when single file is supported
-  const staging = helper.tmpDir('staging')
-  t.teardown(() => helper.gc(staging))
+  const staging = await tmpDir(t, { name: `staging-${helper.getRandomId()}` })
   await helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
   if (isLinux) {
     await helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.AppImage'))
@@ -302,8 +294,7 @@ test('should receive and apply update when update happens while app is not runni
   t.comment('run')
   const runParams = { args: [] }
   // TODO: Support Windows
-  const appDir = helper.tmpDir('appdir')
-  t.teardown(() => helper.gc(appDir))
+  const appDir = await tmpDir(t, { name: `appdir-${helper.getRandomId()}` })
   runParams.appDir = appDir
 
   if (isLinux) {

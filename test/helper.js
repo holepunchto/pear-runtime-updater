@@ -1,5 +1,4 @@
 const fs = require('bare-fs')
-const os = require('bare-os')
 const createTestnet = require('@hyperswarm/testnet')
 const { platform, arch } = require('which-runtime')
 const path = require('bare-path')
@@ -62,18 +61,6 @@ module.exports = {
 
   getRandomId() {
     return Math.random().toString(16).slice(2)
-  },
-
-  tmpDir(name = '', suffix = this.getRandomId()) {
-    return path.join(os.tmpdir(), `pear-test-${name ? name + '-' : ''}${suffix}`)
-  },
-
-  async gc(dir) {
-    try {
-      await fs.promises.rm(dir, { recursive: true, force: true })
-    } catch (err) {
-      if (err.code !== 'ENOENT' && err.code !== 'EISDIR' && err.code !== 'ENOTDIR') throw err
-    }
   },
 
   async waitForExit(child) {
