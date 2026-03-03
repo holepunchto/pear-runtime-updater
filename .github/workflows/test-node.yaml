@@ -16,8 +16,10 @@ jobs:
             platform: macos
 
     runs-on: ${{ matrix.os }}
-    name: Test / ${{ matrix.platform }}
+    name: ${{ matrix.platform }}-${{ matrix.arch }}
     steps:
+      - uses: holepunchto/actions/node-base@v1
+
       - name: Install fixture dependencies
         shell: bash
         run: for dir in test/fixtures/*/; do (cd "$dir" && npm install --install-links); done

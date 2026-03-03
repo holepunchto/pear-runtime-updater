@@ -16,7 +16,7 @@ jobs:
             platform: macos
 
     runs-on: ${{ matrix.os }}
-    name: Test / ${{ matrix.platform }}
+    name: ${{ matrix.platform }}-${{ matrix.arch }}
     steps:
       - uses: holepunchto/actions/bare-base@v1
 
