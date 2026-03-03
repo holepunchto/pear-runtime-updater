@@ -4,47 +4,30 @@ const Helper = require('./helper')
 const path = require('bare-path')
 const env = require('bare-env')
 const { isLinux, isMac, platform, arch } = require('which-runtime')
+const MockPlatform = require('./mock-platform')
 const host = platform + '-' + arch
 
 const fixture = Helper.fixture('updater')
-let platformDir, testnet
-
-test.hook('setup', async (t) => {
-  t.timeout(180_000)
-  ;({ testnet, platformDir } = await Helper.provisionPlatform())
-})
-
-const seedOpts = (id, dir, link) => ({
-  channel: `test-${id}`,
-  name: `test-${id}`,
-  key: null,
-  dir,
-  link,
-  cmdArgs: []
-})
-const stageOpts = (id, dir, link) => ({
-  ...seedOpts(id, dir, link),
-  dryRun: false,
-  ignore: []
-})
-const releaseOpts = (link, key) => ({
-  link,
-  key
-})
 
 test('should receive and apply update when update happens while app is running', async (t) => {
   t.timeout(180_000)
 
-  t.comment('connect to IPC')
-  const ipc = await Helper.connect(platformDir)
-  t.teardown(() => ipc.close())
+  t.comment('create testnet')
+  const testnet = await Helper.createTestnet()
+  t.teardown(() => testnet.destroy())
 
-  t.comment('touch pear link')
-  const touch = ipc.touch()
-  t.teardown(() => Helper.teardownStream(touch))
-  const touched = await Helper.pick(touch, { tag: 'final' })
-  t.ok(touched.success, `touched ${touched.link}`)
-  const { key, link } = touched
+  const platformDir = Helper.tmpDir('platform')
+  t.teardown(() => Helper.gc(platformDir))
+
+  t.comment('prepare mock platform')
+  const platform = new MockPlatform({
+    dir: platformDir,
+    bootstrap: testnet.nodes.map((e) => `${e.host}:${e.port}`)
+  })
+  await platform.ready()
+  t.teardown(() => platform.close())
+  const link = platform.link
+  t.ok(link, `prepared ${link}`)
 
   t.comment('prepare copy of fixture')
   const app = Helper.tmpDir('fixture')
@@ -94,29 +77,10 @@ test('should receive and apply update when update happens while app is running',
   }
 
   t.comment('stage')
-  const id = Helper.getRandomId()
-  {
-    const stage = await ipc.stage(stageOpts(id, staging, link))
-    t.teardown(() => Helper.teardownStream(stage))
-    const staged = await Helper.pick(stage, { tag: 'final' })
-    t.ok(staged.success, 'staged successfully')
-  }
-
-  t.comment('release')
-  {
-    const release = await ipc.release(releaseOpts(link, key))
-    t.teardown(() => Helper.teardownStream(release))
-    const released = await Helper.pick(release, { tag: 'final' })
-    t.ok(released.success, 'released successfully')
-  }
+  await t.execution(platform.stage(staging), 'staged successfully')
 
   t.comment('seed')
-  {
-    const seed = ipc.seed(seedOpts(id, staging, link))
-    t.teardown(() => Helper.teardownStream(seed))
-    await Helper.pick(seed, { tag: 'announced' })
-    t.pass('seed announced')
-  }
+  await t.execution(platform.seed(), 'seeded successfully')
 
   t.comment('run')
   const runParams = { args: [] }
@@ -185,20 +149,7 @@ test('should receive and apply update when update happens while app is running',
       if (data.toString().includes('applied')) resolve()
     })
   )
-  {
-    const stage = await ipc.stage(stageOpts(id, staging, link))
-    t.teardown(() => Helper.teardownStream(stage))
-    const staged = await Helper.pick(stage, { tag: 'final' })
-    t.ok(staged.success, 'restaged successfully')
-  }
-
-  t.comment('rerelease')
-  {
-    const release = await ipc.release(releaseOpts(link, key))
-    t.teardown(() => Helper.teardownStream(release))
-    const released = await Helper.pick(release, { tag: 'final' })
-    t.ok(released.success, 'rereleased successfully')
-  }
+  await t.execution(platform.stage(staging), 'restaged successfully')
 
   t.comment('check for update message')
   await t.execution(updated, 'got updated message')
@@ -236,16 +187,22 @@ test('should receive and apply update when update happens while app is running',
 test.skip('should receive and apply update with delayed seeding', async (t) => {
   t.timeout(180_000)
 
-  t.comment('connect to IPC')
-  const ipc = await Helper.connect(platformDir)
-  t.teardown(() => ipc.close())
+  t.comment('create testnet')
+  const testnet = await Helper.createTestnet()
+  t.teardown(() => testnet.destroy())
 
-  t.comment('touch pear link')
-  const touch = ipc.touch()
-  t.teardown(() => Helper.teardownStream(touch))
-  const touched = await Helper.pick(touch, { tag: 'final' })
-  t.ok(touched.success, `touched ${touched.link}`)
-  const { key, link } = touched
+  const platformDir = Helper.tmpDir('platform')
+  t.teardown(() => Helper.gc(platformDir))
+
+  t.comment('prepare mock platform')
+  const platform = new MockPlatform({
+    dir: platformDir,
+    bootstrap: testnet.nodes.map((e) => `${e.host}:${e.port}`)
+  })
+  await platform.ready()
+  t.teardown(() => platform.close())
+  const link = platform.link
+  t.ok(link, `prepared ${link}`)
 
   t.comment('prepare copy of fixture')
   const app = Helper.tmpDir('fixture')
@@ -295,21 +252,7 @@ test.skip('should receive and apply update with delayed seeding', async (t) => {
   }
 
   t.comment('stage')
-  const id = Helper.getRandomId()
-  {
-    const stage = await ipc.stage(stageOpts(id, staging, link))
-    t.teardown(() => Helper.teardownStream(stage))
-    const staged = await Helper.pick(stage, { tag: 'final' })
-    t.ok(staged.success, 'staged successfully')
-  }
-
-  t.comment('release')
-  {
-    const release = await ipc.release(releaseOpts(link, key))
-    t.teardown(() => Helper.teardownStream(release))
-    const released = await Helper.pick(release, { tag: 'final' })
-    t.ok(released.success, 'released successfully')
-  }
+  await t.execution(platform.stage(staging), 'staged successfully')
 
   t.comment('run')
   const runParams = { args: [] }
@@ -384,20 +327,7 @@ test.skip('should receive and apply update with delayed seeding', async (t) => {
       if (data.toString().includes('applied')) resolve()
     })
   )
-  {
-    const stage = await ipc.stage(stageOpts(id, staging, link))
-    t.teardown(() => Helper.teardownStream(stage))
-    const staged = await Helper.pick(stage, { tag: 'final' })
-    t.ok(staged.success, 'restaged successfully')
-  }
-
-  t.comment('rerelease')
-  {
-    const release = await ipc.release(releaseOpts(link, key))
-    t.teardown(() => Helper.teardownStream(release))
-    const released = await Helper.pick(release, { tag: 'final' })
-    t.ok(released.success, 'rereleased successfully')
-  }
+  await t.execution(platform.stage(staging), 'restaged successfully')
 
   t.comment('delaying seed')
   const result = await Promise.race([
@@ -407,12 +337,7 @@ test.skip('should receive and apply update with delayed seeding', async (t) => {
   t.is(result, 'timed-out', 'should not update before seed starts')
 
   t.comment('seed')
-  {
-    const seed = ipc.seed(seedOpts(id, staging, link))
-    t.teardown(() => Helper.teardownStream(seed))
-    await Helper.pick(seed, { tag: 'announced' })
-    t.pass('seed announced')
-  }
+  await t.execution(platform.seed(), 'seeded successfully')
 
   t.comment('check for update message')
   await t.execution(updated, 'got updated message')
@@ -449,16 +374,22 @@ test.skip('should receive and apply update with delayed seeding', async (t) => {
 test('should receive and apply update when update happens while app is not running', async (t) => {
   t.timeout(180_000)
 
-  t.comment('connect to IPC')
-  const ipc = await Helper.connect(platformDir)
-  t.teardown(() => ipc.close())
+  t.comment('create testnet')
+  const testnet = await Helper.createTestnet()
+  t.teardown(() => testnet.destroy())
 
-  t.comment('touch pear link')
-  const touch = ipc.touch()
-  t.teardown(() => Helper.teardownStream(touch))
-  const touched = await Helper.pick(touch, { tag: 'final' })
-  t.ok(touched.success, `touched ${touched.link}`)
-  const { key, link } = touched
+  const platformDir = Helper.tmpDir('platform')
+  t.teardown(() => Helper.gc(platformDir))
+
+  t.comment('prepare mock platform')
+  const platform = new MockPlatform({
+    dir: platformDir,
+    bootstrap: testnet.nodes.map((e) => `${e.host}:${e.port}`)
+  })
+  await platform.ready()
+  t.teardown(() => platform.close())
+  const link = platform.link
+  t.ok(link, `prepared ${link}`)
 
   t.comment('prepare copy of fixture')
   const app = Helper.tmpDir('fixture')
@@ -508,29 +439,10 @@ test('should receive and apply update when update happens while app is not runni
   }
 
   t.comment('stage')
-  const id = Helper.getRandomId()
-  {
-    const stage = await ipc.stage(stageOpts(id, staging, link))
-    t.teardown(() => Helper.teardownStream(stage))
-    const staged = await Helper.pick(stage, { tag: 'final' })
-    t.ok(staged.success, 'staged successfully')
-  }
-
-  t.comment('release')
-  {
-    const release = await ipc.release(releaseOpts(link, key))
-    t.teardown(() => Helper.teardownStream(release))
-    const released = await Helper.pick(release, { tag: 'final' })
-    t.ok(released.success, 'released successfully')
-  }
+  await t.execution(platform.stage(staging), 'staged successfully')
 
   t.comment('seed')
-  {
-    const seed = ipc.seed(seedOpts(id, staging, link))
-    t.teardown(() => Helper.teardownStream(seed))
-    await Helper.pick(seed, { tag: 'announced' })
-    t.pass('seed announced')
-  }
+  await t.execution(platform.seed(), 'seeded successfully')
 
   t.comment('update app version')
   {
@@ -557,20 +469,7 @@ test('should receive and apply update when update happens while app is not runni
   }
 
   t.comment('restage')
-  {
-    const stage = await ipc.stage(stageOpts(id, staging, link))
-    t.teardown(() => Helper.teardownStream(stage))
-    const staged = await Helper.pick(stage, { tag: 'final' })
-    t.ok(staged.success, 'restaged successfully')
-  }
-
-  t.comment('rerelease')
-  {
-    const release = await ipc.release(releaseOpts(link, key))
-    t.teardown(() => Helper.teardownStream(release))
-    const released = await Helper.pick(release, { tag: 'final' })
-    t.ok(released.success, 'rereleased successfully')
-  }
+  await t.execution(platform.stage(staging), 'restaged successfully')
 
   t.comment('run')
   const runParams = { args: [] }
@@ -644,12 +543,4 @@ test('should receive and apply update when update happens while app is not runni
   t.is(await startedVersion, '1.0.1', 'version matches updated value (1.0.1)')
 
   await t.execution(await exit, 'app exited successfully')
-})
-
-test.hook('cleanup', async (t) => {
-  const ipc = await Helper.connect(platformDir)
-  t.teardown(() => ipc.close())
-  await ipc.shutdown()
-  await testnet.destroy()
-  await Helper.gc(platformDir)
 })
