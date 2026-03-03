@@ -111,6 +111,7 @@ test.solo('should receive and apply update when update happens while app is runn
     env: runParams.env,
     stdio: 'pipe'
   })
+  console.log('running', runParams.execPath)
   run.stdout.on('data', (data) => console.log('stdout', data.toString()))
   run.stderr.on('data', (data) => console.log('stderr', data.toString()))
   let exit = Helper.waitForExit(run)
@@ -167,6 +168,9 @@ test.solo('should receive and apply update when update happens while app is runn
     env: runParams.env,
     stdio: 'pipe'
   })
+  console.log('running', runParams.execPath)
+  run.stdout.on('data', (data) => console.log('rerun stdout', data.toString()))
+  run.stderr.on('data', (data) => console.log('rerun stderr', data.toString()))
   exit = Helper.waitForExit(run)
 
   t.comment('wait for version')
