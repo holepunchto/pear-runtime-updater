@@ -7,7 +7,7 @@ const { isLinux, isMac, platform, arch } = require('which-runtime')
 const fs = require('bare-fs')
 const host = platform + '-' + arch
 
-const fixture = helper.fixture('updater')
+const fixture = path.join(__dirname, 'fixtures', 'updater')
 
 test('should receive and apply update when update happens while app is running', async (t) => {
   t.timeout(120_000)

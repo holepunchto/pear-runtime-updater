@@ -86,10 +86,6 @@ module.exports = {
     })
   },
 
-  fixture(name) {
-    return path.join(__dirname, 'fixtures', name)
-  },
-
   async cp(src, dst, options = { ignore: ['/pear', '/.git', '/test'] }) {
     if (fs.statSync(src).isDirectory() === false) {
       const dstDir = path.dirname(dst)
