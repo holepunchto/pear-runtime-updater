@@ -25,4 +25,4 @@ jobs:
         run: for dir in test/fixtures/*/; do (cd "$dir" && npm install --install-links); done
 
       - name: Run tests
-        run: ${{ matrix.platform == 'linux' && 'xvfb-run ' || '' }}npm test:node
+        run: ${{ matrix.platform == 'linux' && 'xvfb-run ' || '' }}npm run test:node
