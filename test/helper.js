@@ -15,9 +15,8 @@ module.exports = class Helper {
   static createTestnet = createTestnet
 
   static MockPlatform = class MockPlatform extends ReadyResource {
-    constructor({ dir, key, bootstrap }) {
+    constructor({ dir, bootstrap }) {
       super()
-      this.key = key
       this.dir = dir
       this.bootstrap = bootstrap
     }
@@ -29,7 +28,7 @@ module.exports = class Helper {
       this.keyPair = await this.store.createKeyPair('pear-container')
       this.swarm = new Hyperswarm({ keyPair: this.keyPair, bootstrap: this.bootstrap })
 
-      this.swarm.on('connection', (connection, peerInfo) => {
+      this.swarm.on('connection', (connection) => {
         this.store.replicate(connection)
       })
     }
