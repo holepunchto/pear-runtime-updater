@@ -35,7 +35,7 @@ test('should receive and apply update when update happens while app is running',
 
   t.comment('update app version and link')
   {
-    const pkg = await Helper.readJSON(path.join(app, 'package.json'))
+    const pkg = require(path.join(app, 'package.json'))
     pkg.version = '1.0.0'
     pkg.upgrade = link
     await Helper.writeJSON(path.join(app, 'package.json'), pkg)
@@ -115,7 +115,7 @@ test('should receive and apply update when update happens while app is running',
 
   t.comment('update app version')
   {
-    const pkg = await Helper.readJSON(path.join(app, 'package.json'))
+    const pkg = require(path.join(app, 'package.json'))
     pkg.version = '1.0.1'
     pkg.upgrade = link
     await Helper.writeJSON(path.join(app, 'package.json'), pkg)
@@ -209,7 +209,7 @@ test('should receive and apply update when update happens while app is not runni
 
   t.comment('update app version and link')
   {
-    const pkg = await Helper.readJSON(path.join(app, 'package.json'))
+    const pkg = require(path.join(app, 'package.json'))
     pkg.version = '1.0.0'
     pkg.upgrade = link
     await Helper.writeJSON(path.join(app, 'package.json'), pkg)
@@ -257,7 +257,7 @@ test('should receive and apply update when update happens while app is not runni
 
   t.comment('update app version')
   {
-    const pkg = await Helper.readJSON(path.join(app, 'package.json'))
+    const pkg = require(path.join(app, 'package.json'))
     pkg.version = '1.0.1'
     pkg.upgrade = link
     await Helper.writeJSON(path.join(app, 'package.json'), pkg)

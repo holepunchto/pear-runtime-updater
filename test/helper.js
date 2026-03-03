@@ -106,14 +106,6 @@ module.exports = class Helper {
     await mirror.done()
   }
 
-  static async readJSON(file) {
-    const content = await fs.promises.readFile(file, 'utf-8').catch((err) => {
-      if (err.code === 'ENOENT') return null
-      throw err
-    })
-    return content ? JSON.parse(content) : null
-  }
-
   static async writeJSON(file, data) {
     await fs.promises.writeFile(file, JSON.stringify(data, null, 2), 'utf-8')
   }
