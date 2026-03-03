@@ -4,6 +4,7 @@ const Helper = require('./helper')
 const path = require('bare-path')
 const env = require('bare-env')
 const { isLinux, isMac, platform, arch } = require('which-runtime')
+const fs = require('bare-fs')
 const host = platform + '-' + arch
 
 const fixture = Helper.fixture('updater')
@@ -38,7 +39,11 @@ test('should receive and apply update when update happens while app is running',
     const pkg = require(path.join(app, 'package.json'))
     pkg.version = '1.0.0'
     pkg.upgrade = link
-    await Helper.writeJSON(path.join(app, 'package.json'), pkg)
+    await fs.promises.writeFile(
+      path.join(app, 'package.json'),
+      JSON.stringify(pkg, null, 2),
+      'utf8'
+    )
   }
 
   t.comment('build app')
@@ -118,7 +123,11 @@ test('should receive and apply update when update happens while app is running',
     const pkg = require(path.join(app, 'package.json'))
     pkg.version = '1.0.1'
     pkg.upgrade = link
-    await Helper.writeJSON(path.join(app, 'package.json'), pkg)
+    await fs.promises.writeFile(
+      path.join(app, 'package.json'),
+      JSON.stringify(pkg, null, 2),
+      'utf8'
+    )
   }
 
   t.comment('rebuild app')
@@ -212,7 +221,11 @@ test('should receive and apply update when update happens while app is not runni
     const pkg = require(path.join(app, 'package.json'))
     pkg.version = '1.0.0'
     pkg.upgrade = link
-    await Helper.writeJSON(path.join(app, 'package.json'), pkg)
+    await fs.promises.writeFile(
+      path.join(app, 'package.json'),
+      JSON.stringify(pkg, null, 2),
+      'utf8'
+    )
   }
 
   t.comment('build app')
@@ -260,7 +273,11 @@ test('should receive and apply update when update happens while app is not runni
     const pkg = require(path.join(app, 'package.json'))
     pkg.version = '1.0.1'
     pkg.upgrade = link
-    await Helper.writeJSON(path.join(app, 'package.json'), pkg)
+    await fs.promises.writeFile(
+      path.join(app, 'package.json'),
+      JSON.stringify(pkg, null, 2),
+      'utf8'
+    )
   }
 
   t.comment('rebuild app')

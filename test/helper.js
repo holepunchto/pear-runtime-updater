@@ -105,8 +105,4 @@ module.exports = class Helper {
     })
     await mirror.done()
   }
-
-  static async writeJSON(file, data) {
-    await fs.promises.writeFile(file, JSON.stringify(data, null, 2), 'utf-8')
-  }
 }
