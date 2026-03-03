@@ -33,7 +33,7 @@
       "default": "path"
     },
     "process": {
-      "bare": "bare-subprocess",
+      "bare": "bare-process",
       "default": "process"
     },
     "os": {
