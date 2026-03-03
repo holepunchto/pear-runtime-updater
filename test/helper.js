@@ -45,7 +45,7 @@ module.exports = class Helper {
       const local = new Localdrive(dir)
       await local.ready()
 
-      const mirror = local.mirror(this.drive, { prune: true, batch: true, ...opts })
+      const mirror = local.mirror(this.drive, { dedup: true, batch: true, ...opts })
       await mirror.done()
 
       await local.close()
