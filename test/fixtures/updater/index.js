@@ -8,6 +8,14 @@ const { version, upgrade } = pkg
 const CI = !!process.env.CI
 if (CI) app.disableHardwareAcceleration()
 
+const debounce = (fn, delay) => {
+  let timeout
+  return function (...args) {
+    clearTimeout(timeout)
+    timeout = setTimeout(() => fn.apply(this, args), delay)
+  }
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 800,
@@ -63,6 +71,12 @@ async function startUpdater() {
     upgrade
   })
   await updater.ready()
+  const applyUpdate = debounce(async () => {
+    await updater.applyUpdate()
+    console.log('applied')
+    app.quit()
+  }, 1000)
+
   app.on('quit', () => {
     updater.close()
   })
@@ -74,10 +88,7 @@ async function startUpdater() {
   updater.on('updated', async function () {
     console.log('updated')
 
-    await updater.applyUpdate()
-    console.log('applied')
-
-    app.quit()
+    applyUpdate()
   })
 
   if (version === '1.0.1') {
