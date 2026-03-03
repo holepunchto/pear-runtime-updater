@@ -20,6 +20,7 @@
   "scripts": {
     "format": "prettier . --write",
     "test": "bare test/updates.test.js",
+    "test:node": "node test/updates.test.js",
     "lint": "prettier --check . && lunte"
   },
   "imports": {

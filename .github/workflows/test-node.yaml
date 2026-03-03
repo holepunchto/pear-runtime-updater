@@ -1,0 +1,26 @@
+name: Test with Node
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+jobs:
+  test-node:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+
+          - os: macos-latest
+            platform: macos
+
+    runs-on: ${{ matrix.os }}
+    name: Test / ${{ matrix.platform }}
+    steps:
+      - name: Install fixture dependencies
+        shell: bash
+        run: for dir in test/fixtures/*/; do (cd "$dir" && npm install --install-links); done
+
+      - name: Run tests
+        run: ${{ matrix.platform == 'linux' && 'xvfb-run ' || '' }}npm test:node
