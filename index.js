@@ -97,7 +97,6 @@ module.exports = class PearRuntime extends ReadyResource {
       const manager = new MSIXManager()
       await manager.addPackage(nextApp)
     } else {
-      console.log('swapping', nextApp, '->', this.app)
       await fsx.swap(nextApp, this.app)
     }
     await fs.promises.rm(this.next, { recursive: true, force: true })
