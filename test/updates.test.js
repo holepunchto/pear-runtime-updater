@@ -1,10 +1,10 @@
 const test = require('brittle')
-const { spawn } = require('bare-subprocess')
+const { spawn } = require('child_process')
 const helper = require('./helper')
-const path = require('bare-path')
-const env = require('bare-env')
+const path = require('path')
+const { env } = require('process')
 const { isLinux, isMac, platform, arch } = require('which-runtime')
-const fs = require('bare-fs')
+const fs = require('fs')
 const tmpDir = require('test-tmp')
 const host = platform + '-' + arch
 
