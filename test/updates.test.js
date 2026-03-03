@@ -6,6 +6,7 @@ const { env } = require('process')
 const { isLinux, isMac, platform, arch } = require('which-runtime')
 const fs = require('fs')
 const tmpDir = require('test-tmp')
+const Localdrive = require('localdrive')
 const host = platform + '-' + arch
 
 const fixture = path.join(__dirname, 'fixtures', 'updater')
@@ -31,7 +32,7 @@ test('should receive and apply update when update happens while app is running',
 
   t.comment('prepare copy of fixture')
   const app = await tmpDir(t, { name: `fixture-${helper.getRandomId()}` })
-  await helper.cp(fixture, app)
+  await new Localdrive(fixture).mirror(new Localdrive(app)).done()
 
   t.comment('update app version and link')
   {
@@ -58,23 +59,27 @@ test('should receive and apply update when update happens while app is running',
   if (isLinux) {
     appBuildPath = path.join(app, 'out', 'make', `updater-1.0.0-${arch}.AppImage`)
     appRunPath = path.join(runDir, 'updater.AppImage')
-    await helper.cp(appBuildPath, appRunPath)
+    await fs.promises.mkdir(path.dirname(appRunPath), { recursive: true })
+    await fs.promises.cp(appBuildPath, appRunPath)
   }
   if (isMac) {
     appBuildPath = path.join(app, 'out', `updater-${host}`, 'updater.app')
     appRunPath = path.join(runDir, 'updater.app')
-    await helper.cp(appBuildPath, appRunPath)
+    await new Localdrive(appBuildPath).mirror(new Localdrive(appRunPath)).done()
   }
 
   t.comment('build app structure')
   // TODO: replace with pear-build when single file is supported
   const staging = await tmpDir(t, { name: `staging-${helper.getRandomId()}` })
-  await helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
+  await new Localdrive(app).mirror(new Localdrive(staging), { prefix: 'package.json' }).done()
   if (isLinux) {
-    await helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.AppImage'))
+    const dst = path.join(staging, 'by-arch', host, 'app', 'updater.AppImage')
+    await fs.promises.mkdir(path.dirname(dst), { recursive: true })
+    await fs.promises.cp(appBuildPath, dst)
   }
   if (isMac) {
-    await helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.app'))
+    const dst = path.join(staging, 'by-arch', host, 'app', 'updater.app')
+    await new Localdrive(appBuildPath).mirror(new Localdrive(dst)).done()
   }
 
   t.comment('stage')
@@ -133,13 +138,16 @@ test('should receive and apply update when update happens while app is running',
   }
 
   t.comment('rebuild app structure')
-  await helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
+  await new Localdrive(app).mirror(new Localdrive(staging), { prefix: 'package.json' }).done()
   if (isLinux) {
     appBuildPath = path.join(app, 'out', 'make', `updater-1.0.1-${arch}.AppImage`)
-    await helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.AppImage'))
+    const dst = path.join(staging, 'by-arch', host, 'app', 'updater.AppImage')
+    await fs.promises.mkdir(path.dirname(dst), { recursive: true })
+    await fs.promises.cp(appBuildPath, dst)
   }
   if (isMac) {
-    await helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.app'))
+    const dst = path.join(staging, 'by-arch', host, 'app', 'updater.app')
+    await new Localdrive(appBuildPath).mirror(new Localdrive(dst)).done()
   }
 
   t.comment('restage')
@@ -208,7 +216,7 @@ test('should receive and apply update when update happens while app is not runni
 
   t.comment('prepare copy of fixture')
   const app = await tmpDir(t, { name: `fixture-${helper.getRandomId()}` })
-  await helper.cp(fixture, app)
+  await new Localdrive(fixture).mirror(new Localdrive(app)).done()
 
   t.comment('update app version and link')
   {
@@ -235,23 +243,27 @@ test('should receive and apply update when update happens while app is not runni
   if (isLinux) {
     appBuildPath = path.join(app, 'out', 'make', `updater-1.0.0-${arch}.AppImage`)
     appRunPath = path.join(runDir, 'updater.AppImage')
-    await helper.cp(appBuildPath, appRunPath)
+    await fs.promises.mkdir(path.dirname(appRunPath), { recursive: true })
+    await fs.promises.cp(appBuildPath, appRunPath)
   }
   if (isMac) {
     appBuildPath = path.join(app, 'out', `updater-${host}`, 'updater.app')
     appRunPath = path.join(runDir, 'updater.app')
-    await helper.cp(appBuildPath, appRunPath)
+    await new Localdrive(appBuildPath).mirror(new Localdrive(appRunPath)).done()
   }
 
   t.comment('build app structure')
   // TODO: replace with pear-build when single file is supported
   const staging = await tmpDir(t, { name: `staging-${helper.getRandomId()}` })
-  await helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
+  await new Localdrive(app).mirror(new Localdrive(staging), { prefix: 'package.json' }).done()
   if (isLinux) {
-    await helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.AppImage'))
+    const dst = path.join(staging, 'by-arch', host, 'app', 'updater.AppImage')
+    await fs.promises.mkdir(path.dirname(dst), { recursive: true })
+    await fs.promises.cp(appBuildPath, dst)
   }
   if (isMac) {
-    await helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.app'))
+    const dst = path.join(staging, 'by-arch', host, 'app', 'updater.app')
+    await new Localdrive(appBuildPath).mirror(new Localdrive(dst)).done()
   }
 
   t.comment('stage')
@@ -279,13 +291,16 @@ test('should receive and apply update when update happens while app is not runni
   }
 
   t.comment('rebuild app structure')
-  await helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
+  await new Localdrive(app).mirror(new Localdrive(staging), { prefix: 'package.json' }).done()
   if (isLinux) {
     appBuildPath = path.join(app, 'out', 'make', `updater-1.0.1-${arch}.AppImage`)
-    await helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.AppImage'))
+    const dst = path.join(staging, 'by-arch', host, 'app', 'updater.AppImage')
+    await fs.promises.mkdir(path.dirname(dst), { recursive: true })
+    await fs.promises.cp(appBuildPath, dst)
   }
   if (isMac) {
-    await helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.app'))
+    const dst = path.join(staging, 'by-arch', host, 'app', 'updater.app')
+    await new Localdrive(appBuildPath).mirror(new Localdrive(dst)).done()
   }
 
   t.comment('restage')
