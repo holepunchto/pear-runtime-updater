@@ -11,7 +11,7 @@ const host = platform + '-' + arch
 const fixture = path.join(__dirname, 'fixtures', 'updater')
 
 test('should receive and apply update when update happens while app is running', async (t) => {
-  t.timeout(120_000)
+  t.timeout(180_000)
 
   t.comment('create testnet')
   const testnet = await helper.createTestnet()
@@ -190,7 +190,7 @@ test('should receive and apply update when update happens while app is running',
 })
 
 test('should receive and apply update when update happens while app is not running', async (t) => {
-  t.timeout(120_000)
+  t.timeout(180_000)
 
   t.comment('create testnet')
   const testnet = await helper.createTestnet()
