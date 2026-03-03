@@ -19,8 +19,8 @@
   ],
   "scripts": {
     "format": "prettier . --write",
-    "test": "bare test/updates.test.js",
-    "test:node": "node test/updates.test.js",
+    "test": "brittle-bare test/updates.test.js",
+    "test:node": "brittle-node test/updates.test.js",
     "lint": "prettier --check . && lunte"
   },
   "imports": {
