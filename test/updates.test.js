@@ -1,26 +1,26 @@
 const test = require('brittle')
 const { spawn } = require('bare-subprocess')
-const Helper = require('./helper')
+const helper = require('./helper')
 const path = require('bare-path')
 const env = require('bare-env')
 const { isLinux, isMac, platform, arch } = require('which-runtime')
 const fs = require('bare-fs')
 const host = platform + '-' + arch
 
-const fixture = Helper.fixture('updater')
+const fixture = helper.fixture('updater')
 
 test('should receive and apply update when update happens while app is running', async (t) => {
   t.timeout(120_000)
 
   t.comment('create testnet')
-  const testnet = await Helper.createTestnet()
+  const testnet = await helper.createTestnet()
   t.teardown(() => testnet.destroy())
 
-  const stagerDir = Helper.tmpDir('platform')
-  t.teardown(() => Helper.gc(stagerDir))
+  const stagerDir = helper.tmpDir('platform')
+  t.teardown(() => helper.gc(stagerDir))
 
   t.comment('prepare stager')
-  const stager = new Helper.Stager({
+  const stager = new helper.Stager({
     dir: stagerDir,
     bootstrap: testnet.nodes.map((e) => `${e.host}:${e.port}`)
   })
@@ -30,9 +30,9 @@ test('should receive and apply update when update happens while app is running',
   t.ok(link, `prepared ${link}`)
 
   t.comment('prepare copy of fixture')
-  const app = Helper.tmpDir('fixture')
-  t.teardown(() => Helper.gc(app))
-  await Helper.cp(fixture, app)
+  const app = helper.tmpDir('fixture')
+  t.teardown(() => helper.gc(app))
+  await helper.cp(fixture, app)
 
   t.comment('update app version and link')
   {
@@ -49,35 +49,35 @@ test('should receive and apply update when update happens while app is running',
   t.comment('build app')
   {
     const child = spawn('npm', ['run', 'make'], { cwd: app })
-    await t.execution(Helper.waitForExit(child), 'app built successfully')
+    await t.execution(helper.waitForExit(child), 'app built successfully')
   }
 
   t.comment('copy build to run dir')
-  const runDir = Helper.tmpDir('run')
-  t.teardown(() => Helper.gc(runDir))
+  const runDir = helper.tmpDir('run')
+  t.teardown(() => helper.gc(runDir))
   let appBuildPath
   let appRunPath
   if (isLinux) {
     appBuildPath = path.join(app, 'out', 'make', `updater-1.0.0-${arch}.AppImage`)
     appRunPath = path.join(runDir, 'updater.AppImage')
-    await Helper.cp(appBuildPath, appRunPath)
+    await helper.cp(appBuildPath, appRunPath)
   }
   if (isMac) {
     appBuildPath = path.join(app, 'out', `updater-${host}`, 'updater.app')
     appRunPath = path.join(runDir, 'updater.app')
-    await Helper.cp(appBuildPath, appRunPath)
+    await helper.cp(appBuildPath, appRunPath)
   }
 
   t.comment('build app structure')
   // TODO: replace with pear-build when single file is supported
-  const staging = Helper.tmpDir('staging')
-  t.teardown(() => Helper.gc(staging))
-  await Helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
+  const staging = helper.tmpDir('staging')
+  t.teardown(() => helper.gc(staging))
+  await helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
   if (isLinux) {
-    await Helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.AppImage'))
+    await helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.AppImage'))
   }
   if (isMac) {
-    await Helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.app'))
+    await helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.app'))
   }
 
   t.comment('stage')
@@ -89,8 +89,8 @@ test('should receive and apply update when update happens while app is running',
   t.comment('run')
   const runParams = { args: [] }
   // TODO: Support Windows
-  const appDir = Helper.tmpDir('appdir')
-  t.teardown(() => Helper.gc(appDir))
+  const appDir = helper.tmpDir('appdir')
+  t.teardown(() => helper.gc(appDir))
   runParams.appDir = appDir
 
   if (isLinux) {
@@ -116,7 +116,7 @@ test('should receive and apply update when update happens while app is running',
     env: runParams.env,
     stdio: 'pipe'
   })
-  let exit = Helper.waitForExit(run)
+  let exit = helper.waitForExit(run)
 
   t.comment('update app version')
   {
@@ -133,17 +133,17 @@ test('should receive and apply update when update happens while app is running',
   t.comment('rebuild app')
   {
     const child = spawn('npm', ['run', 'make'], { cwd: app })
-    await t.execution(Helper.waitForExit(child), 'app rebuilt successfully')
+    await t.execution(helper.waitForExit(child), 'app rebuilt successfully')
   }
 
   t.comment('rebuild app structure')
-  await Helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
+  await helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
   if (isLinux) {
     appBuildPath = path.join(app, 'out', 'make', `updater-1.0.1-${arch}.AppImage`)
-    await Helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.AppImage'))
+    await helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.AppImage'))
   }
   if (isMac) {
-    await Helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.app'))
+    await helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.app'))
   }
 
   t.comment('restage')
@@ -174,7 +174,7 @@ test('should receive and apply update when update happens while app is running',
     env: runParams.env,
     stdio: 'pipe'
   })
-  exit = Helper.waitForExit(run)
+  exit = helper.waitForExit(run)
 
   t.comment('wait for version')
   const startedVersion = new Promise((resolve) => {
@@ -195,14 +195,14 @@ test('should receive and apply update when update happens while app is not runni
   t.timeout(120_000)
 
   t.comment('create testnet')
-  const testnet = await Helper.createTestnet()
+  const testnet = await helper.createTestnet()
   t.teardown(() => testnet.destroy())
 
-  const stagerDir = Helper.tmpDir('platform')
-  t.teardown(() => Helper.gc(stagerDir))
+  const stagerDir = helper.tmpDir('platform')
+  t.teardown(() => helper.gc(stagerDir))
 
   t.comment('prepare stager')
-  const stager = new Helper.Stager({
+  const stager = new helper.Stager({
     dir: stagerDir,
     bootstrap: testnet.nodes.map((e) => `${e.host}:${e.port}`)
   })
@@ -212,9 +212,9 @@ test('should receive and apply update when update happens while app is not runni
   t.ok(link, `prepared ${link}`)
 
   t.comment('prepare copy of fixture')
-  const app = Helper.tmpDir('fixture')
-  t.teardown(() => Helper.gc(app))
-  await Helper.cp(fixture, app)
+  const app = helper.tmpDir('fixture')
+  t.teardown(() => helper.gc(app))
+  await helper.cp(fixture, app)
 
   t.comment('update app version and link')
   {
@@ -231,35 +231,35 @@ test('should receive and apply update when update happens while app is not runni
   t.comment('build app')
   {
     const child = spawn('npm', ['run', 'make'], { cwd: app })
-    await t.execution(Helper.waitForExit(child), 'app built successfully')
+    await t.execution(helper.waitForExit(child), 'app built successfully')
   }
 
   t.comment('copy build to run dir')
-  const runDir = Helper.tmpDir('run')
-  t.teardown(() => Helper.gc(runDir))
+  const runDir = helper.tmpDir('run')
+  t.teardown(() => helper.gc(runDir))
   let appBuildPath
   let appRunPath
   if (isLinux) {
     appBuildPath = path.join(app, 'out', 'make', `updater-1.0.0-${arch}.AppImage`)
     appRunPath = path.join(runDir, 'updater.AppImage')
-    await Helper.cp(appBuildPath, appRunPath)
+    await helper.cp(appBuildPath, appRunPath)
   }
   if (isMac) {
     appBuildPath = path.join(app, 'out', `updater-${host}`, 'updater.app')
     appRunPath = path.join(runDir, 'updater.app')
-    await Helper.cp(appBuildPath, appRunPath)
+    await helper.cp(appBuildPath, appRunPath)
   }
 
   t.comment('build app structure')
   // TODO: replace with pear-build when single file is supported
-  const staging = Helper.tmpDir('staging')
-  t.teardown(() => Helper.gc(staging))
-  await Helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
+  const staging = helper.tmpDir('staging')
+  t.teardown(() => helper.gc(staging))
+  await helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
   if (isLinux) {
-    await Helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.AppImage'))
+    await helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.AppImage'))
   }
   if (isMac) {
-    await Helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.app'))
+    await helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.app'))
   }
 
   t.comment('stage')
@@ -283,17 +283,17 @@ test('should receive and apply update when update happens while app is not runni
   t.comment('rebuild app')
   {
     const child = spawn('npm', ['run', 'make'], { cwd: app })
-    await t.execution(Helper.waitForExit(child), 'app rebuilt successfully')
+    await t.execution(helper.waitForExit(child), 'app rebuilt successfully')
   }
 
   t.comment('rebuild app structure')
-  await Helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
+  await helper.cp(path.join(app, 'package.json'), path.join(staging, 'package.json'))
   if (isLinux) {
     appBuildPath = path.join(app, 'out', 'make', `updater-1.0.1-${arch}.AppImage`)
-    await Helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.AppImage'))
+    await helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.AppImage'))
   }
   if (isMac) {
-    await Helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.app'))
+    await helper.cp(appBuildPath, path.join(staging, 'by-arch', host, 'app', 'updater.app'))
   }
 
   t.comment('restage')
@@ -302,8 +302,8 @@ test('should receive and apply update when update happens while app is not runni
   t.comment('run')
   const runParams = { args: [] }
   // TODO: Support Windows
-  const appDir = Helper.tmpDir('appdir')
-  t.teardown(() => Helper.gc(appDir))
+  const appDir = helper.tmpDir('appdir')
+  t.teardown(() => helper.gc(appDir))
   runParams.appDir = appDir
 
   if (isLinux) {
@@ -329,7 +329,7 @@ test('should receive and apply update when update happens while app is not runni
     env: runParams.env,
     stdio: 'pipe'
   })
-  let exit = Helper.waitForExit(run)
+  let exit = helper.waitForExit(run)
   const updated = new Promise((resolve) =>
     run.stdout.on('data', (data) => {
       if (data.toString().includes('updated')) resolve()
@@ -356,7 +356,7 @@ test('should receive and apply update when update happens while app is not runni
     env: runParams.env,
     stdio: 'pipe'
   })
-  exit = Helper.waitForExit(run)
+  exit = helper.waitForExit(run)
 
   t.comment('wait for version')
   const startedVersion = new Promise((resolve) => {

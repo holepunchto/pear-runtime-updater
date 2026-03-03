@@ -10,11 +10,11 @@ const Hyperdrive = require('hyperdrive')
 const Hyperswarm = require('hyperswarm')
 const pearLink = require('pear-link')
 
-module.exports = class Helper {
-  static host = `${platform}-${arch}`
-  static createTestnet = createTestnet
+module.exports = {
+  host: `${platform}-${arch}`,
+  createTestnet: createTestnet,
 
-  static Stager = class Stager extends ReadyResource {
+  Stager: class Stager extends ReadyResource {
     constructor({ dir, bootstrap }) {
       super()
       this.dir = dir
@@ -58,25 +58,25 @@ module.exports = class Helper {
     get link() {
       return pearLink.serialize(this.drive.key)
     }
-  }
+  },
 
-  static getRandomId() {
+  getRandomId() {
     return Math.random().toString(16).slice(2)
-  }
+  },
 
-  static tmpDir(name = '', suffix = Helper.getRandomId()) {
+  tmpDir(name = '', suffix = this.getRandomId()) {
     return path.join(os.tmpdir(), `pear-test-${name ? name + '-' : ''}${suffix}`)
-  }
+  },
 
-  static async gc(dir) {
+  async gc(dir) {
     try {
       await fs.promises.rm(dir, { recursive: true, force: true })
     } catch (err) {
       if (err.code !== 'ENOENT' && err.code !== 'EISDIR' && err.code !== 'ENOTDIR') throw err
     }
-  }
+  },
 
-  static async waitForExit(child) {
+  async waitForExit(child) {
     await new Promise((resolve, reject) => {
       child.on('exit', (code) => {
         if (code === 0) resolve()
@@ -84,13 +84,13 @@ module.exports = class Helper {
       })
       child.on('error', reject)
     })
-  }
+  },
 
-  static fixture(name) {
+  fixture(name) {
     return path.join(__dirname, 'fixtures', name)
-  }
+  },
 
-  static async cp(src, dst, options = { ignore: ['/pear', '/.git', '/test'] }) {
+  async cp(src, dst, options = { ignore: ['/pear', '/.git', '/test'] }) {
     if (fs.statSync(src).isDirectory() === false) {
       const dstDir = path.dirname(dst)
       if (fs.existsSync(dstDir) === false) fs.mkdirSync(dstDir, { recursive: true })
