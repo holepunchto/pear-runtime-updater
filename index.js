@@ -131,7 +131,6 @@ module.exports = class PearRuntime extends ReadyResource {
     this.emit('updating')
     const prefix = `/by-arch/${host}/app/${this.name}`
     for await (const data of co.mirror(local, { prefix })) {
-      console.log('update delta', data)
       this.emit('updating-delta', data)
     }
 
@@ -139,7 +138,6 @@ module.exports = class PearRuntime extends ReadyResource {
     await local.close()
 
     this.checkout = null
-    console.log('oldLength', this.length, 'newLength', length)
     this.length = length
     this.next = next
 

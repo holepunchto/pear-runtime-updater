@@ -42,16 +42,11 @@ module.exports = class Helper {
     }
 
     async stage(dir, opts = {}) {
-      console.log('length before stage', this.drive.core.length)
       const local = new Localdrive(dir)
       await local.ready()
 
       const mirror = local.mirror(this.drive, { prune: true, batch: true, ...opts })
-      for await (const diff of mirror) {
-        console.log('mirror', diff)
-      }
-
-      console.log('length after stage', this.drive.core.length)
+      await mirror.done()
 
       await local.close()
     }
