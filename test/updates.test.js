@@ -4,7 +4,6 @@ const Helper = require('./helper')
 const path = require('bare-path')
 const env = require('bare-env')
 const { isLinux, isMac, platform, arch } = require('which-runtime')
-const MockPlatform = require('./mock-platform')
 const host = platform + '-' + arch
 
 const fixture = Helper.fixture('updater')
@@ -20,7 +19,7 @@ test('should receive and apply update when update happens while app is running',
   t.teardown(() => Helper.gc(platformDir))
 
   t.comment('prepare mock platform')
-  const platform = new MockPlatform({
+  const platform = new Helper.MockPlatform({
     dir: platformDir,
     bootstrap: testnet.nodes.map((e) => `${e.host}:${e.port}`)
   })
@@ -195,7 +194,7 @@ test.skip('should receive and apply update with delayed seeding', async (t) => {
   t.teardown(() => Helper.gc(platformDir))
 
   t.comment('prepare mock platform')
-  const platform = new MockPlatform({
+  const platform = new Helper.MockPlatform({
     dir: platformDir,
     bootstrap: testnet.nodes.map((e) => `${e.host}:${e.port}`)
   })
@@ -382,7 +381,7 @@ test('should receive and apply update when update happens while app is not runni
   t.teardown(() => Helper.gc(platformDir))
 
   t.comment('prepare mock platform')
-  const platform = new MockPlatform({
+  const platform = new Helper.MockPlatform({
     dir: platformDir,
     bootstrap: testnet.nodes.map((e) => `${e.host}:${e.port}`)
   })
