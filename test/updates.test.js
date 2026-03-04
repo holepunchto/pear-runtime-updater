@@ -93,24 +93,21 @@ test('should receive and apply update when update happens while app is running',
   // TODO: Support Windows
   const appDir = await tmpDir(t, { name: `appdir-${helper.getRandomId()}` })
   runParams.appDir = appDir
+  const bootstrap = JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`))
+  const baseArgs = [appDir, bootstrap]
 
   if (isLinux) {
     // needed because GHA does not support FUSE and SUID sandboxing
-    runParams.args = ['--appimage-extract-and-run', '--no-sandbox']
+    runParams.args = ['--appimage-extract-and-run', '--no-sandbox', ...baseArgs]
     runParams.execPath = path.join(appRunPath)
   }
 
   if (isMac) {
-    runParams.args = []
+    runParams.args = [...baseArgs]
     runParams.execPath = path.join(appRunPath, 'Contents', 'MacOS', 'updater')
   }
 
-  runParams.env = {
-    ...env,
-    PEAR_BOOTSTRAP: JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`)),
-    PEAR_APPDIR: appDir,
-    ...(isLinux ? { APPIMAGE: runParams.execPath } : {})
-  }
+  runParams.env = { ...env, ...(isLinux ? { APPIMAGE: runParams.execPath } : {}) }
 
   let run = spawn(runParams.execPath, runParams.args, {
     cwd: app,

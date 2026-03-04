@@ -8,6 +8,10 @@ const { version, upgrade } = pkg
 const CI = !!process.env.CI
 if (CI) app.disableHardwareAcceleration()
 
+const positionalArgs = process.argv.slice(2).filter((arg) => !arg.startsWith('-'))
+const dir = positionalArgs?.[0]
+const bootstrap = positionalArgs?.[1] ? JSON.parse(positionalArgs[1]) : undefined
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 800,
@@ -52,8 +56,6 @@ async function startUpdater() {
   console.log(`running ${version} ${upgrade}`)
 
   const appPath = getAppPath()
-  const dir = process.env.PEAR_APPDIR
-  const bootstrap = process.env.PEAR_BOOTSTRAP ? JSON.parse(process.env.PEAR_BOOTSTRAP) : undefined
   const updater = new Updater({
     dir,
     app: appPath,
