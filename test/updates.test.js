@@ -5,7 +5,6 @@ const path = require('path')
 const { env } = require('process')
 const { isLinux, isMac, isWindows, platform, arch } = require('which-runtime')
 const fs = require('fs')
-const os = require('os')
 const tmpDir = require('test-tmp')
 const Localdrive = require('localdrive')
 const host = platform + '-' + arch
