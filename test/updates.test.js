@@ -12,9 +12,10 @@ const host = platform + '-' + arch
 
 const fixture = path.join(__dirname, 'fixtures', 'updater')
 const npm = which.sync('npm')
+const powershell = isWindows ? which.sync('pwsh') : undefined
 
 function getInstalledMsixExe(name) {
-  const result = spawnSync('powershell', [
+  const result = spawnSync(powershell, [
     '-Command',
     `(Get-AppxPackage -Name '${name}').InstallLocation`
   ])
@@ -25,7 +26,7 @@ function getInstalledMsixExe(name) {
 
 function removeMsixPackage(name) {
   const child = spawn(
-    'powershell',
+    powershell,
     ['-Command', `Get-AppxPackage -Name '${name}' | Remove-AppxPackage`],
     { stdio: 'ignore' }
   )
@@ -34,7 +35,7 @@ function removeMsixPackage(name) {
 
 function trustMsixCertificate(msixPath) {
   const child = spawn(
-    'powershell',
+    powershell,
     [
       '-Command',
       `(Get-AuthenticodeSignature '${msixPath}').SignerCertificate | Import-Certificate -CertStoreLocation Cert:\\LocalMachine\\Root | Out-Null`
