@@ -147,6 +147,7 @@ module.exports = class PearRuntime extends ReadyResource {
     await local.close()
 
     this.checkout = null
+    console.log('update from length', this.length, 'to length', length)
     this.length = length
     this.next = next
 

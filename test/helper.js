@@ -42,8 +42,10 @@ module.exports = {
       const local = new Localdrive(dir)
       await local.ready()
 
+      console.log('before stage length', this.drive.core.length)
       const mirror = local.mirror(this.drive, { dedup: true, batch: true, ...opts })
       await mirror.done()
+      console.log('after stage length', this.drive.core.length)
 
       await local.close()
     }
