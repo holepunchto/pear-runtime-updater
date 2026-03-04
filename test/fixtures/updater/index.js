@@ -1,5 +1,5 @@
 const { app, BrowserWindow } = require('electron')
-const { isLinux, isMac, isWindows } = require('which-runtime')
+const { isLinux, isWindows } = require('which-runtime')
 const path = require('path')
 const Updater = require('pear-runtime-updater')
 const pkg = require('./package.json')
