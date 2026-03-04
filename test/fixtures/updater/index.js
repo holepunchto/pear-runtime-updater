@@ -11,6 +11,7 @@ if (CI) app.disableHardwareAcceleration()
 const positionalArgs = process.argv.slice(2).filter((arg) => !arg.startsWith('-'))
 const dir = positionalArgs?.[0]
 const bootstrap = positionalArgs?.[1] ? JSON.parse(positionalArgs[1]) : undefined
+console.log('got args', { dir, rawBootstrap: positionalArgs?.[1] })
 
 function createWindow() {
   const win = new BrowserWindow({

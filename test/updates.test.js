@@ -11,7 +11,7 @@ const host = platform + '-' + arch
 
 const fixture = path.join(__dirname, 'fixtures', 'updater')
 
-test('should receive and apply update when update happens while app is running', async (t) => {
+test.solo('should receive and apply update when update happens while app is running', async (t) => {
   t.timeout(180_000)
 
   t.comment('create testnet')
@@ -114,6 +114,8 @@ test('should receive and apply update when update happens while app is running',
     env: runParams.env,
     stdio: 'pipe'
   })
+  run.stdout.on('data', (data) => console.log('app stdout', data.toString()))
+  run.stderr.on('data', (data) => console.error('app stderr', data.toString()))
   let exit = helper.waitForExit(run)
 
   t.comment('update app version')
