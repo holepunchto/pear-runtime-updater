@@ -25,7 +25,9 @@ module.exports = {
     {
       name: '@electron-forge/maker-msix',
       platforms: ['win32'],
-      config: {}
+      config: {
+        manifestVariables: { publisher: 'Holepunch' }
+      }
     }
   ],
 
