@@ -14,17 +14,17 @@ const fixture = path.join(__dirname, 'fixtures', 'updater')
 function getInstalledMsixExe(name) {
   const result = spawnSync('powershell', [
     '-Command',
-    `(Get-AppxPackage -Name '*${name}*').InstallLocation`
+    `(Get-AppxPackage -Name '${name}').InstallLocation`
   ])
   const installLocation = result.stdout.toString().trim()
   if (!installLocation) throw new Error('MSIX package not found: ' + name)
-  return path.join(installLocation, name + '.exe')
+  return path.join(installLocation, 'app', name + '.exe')
 }
 
 function removeMsixPackage(name) {
   const child = spawn(
     'powershell',
-    ['-Command', `Get-AppxPackage -Name '*${name}*' | Remove-AppxPackage`],
+    ['-Command', `Get-AppxPackage -Name '${name}' | Remove-AppxPackage`],
     { stdio: 'ignore' }
   )
   return helper.waitForExit(child).catch(() => {})
@@ -87,7 +87,7 @@ test('should receive and apply update when update happens while app is running',
     await new Localdrive(appBuildPath).mirror(new Localdrive(appRunPath)).done()
   }
   if (isWindows) {
-    appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater-1.0.0.msix')
+    appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater.msix')
     const MSIXManager = require('msix-manager')
     const manager = new MSIXManager()
     await manager.addPackage(appBuildPath)
@@ -183,7 +183,7 @@ test('should receive and apply update when update happens while app is running',
     await new Localdrive(appBuildPath).mirror(new Localdrive(dst)).done()
   }
   if (isWindows) {
-    appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater-1.0.1.msix')
+    appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater.msix')
     const dst = path.join(staging, 'by-arch', host, 'app', 'updater.msix')
     await fs.promises.mkdir(path.dirname(dst), { recursive: true })
     await fs.promises.cp(appBuildPath, dst)
@@ -295,7 +295,7 @@ test('should receive and apply update when update happens while app is not runni
     await new Localdrive(appBuildPath).mirror(new Localdrive(appRunPath)).done()
   }
   if (isWindows) {
-    appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater-1.0.0.msix')
+    appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater.msix')
     const MSIXManager = require('msix-manager')
     const manager = new MSIXManager()
     await manager.addPackage(appBuildPath)
@@ -357,7 +357,7 @@ test('should receive and apply update when update happens while app is not runni
     await new Localdrive(appBuildPath).mirror(new Localdrive(dst)).done()
   }
   if (isWindows) {
-    appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater-1.0.1.msix')
+    appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater.msix')
     const dst = path.join(staging, 'by-arch', host, 'app', 'updater.msix')
     await fs.promises.mkdir(path.dirname(dst), { recursive: true })
     await fs.promises.cp(appBuildPath, dst)
