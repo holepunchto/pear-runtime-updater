@@ -33,16 +33,16 @@ function removeMsixPackage(name) {
 }
 
 function trustMsixCertificate(msixPath) {
-  const result = spawnSync(
+  const child = spawn(
     'powershell',
     [
       '-Command',
-      `(Get-AuthenticodeSignature ${msixPath}).SignerCertificate | Import-Certificate -CertStoreLocation Cert:\\LocalMachine\\Root | Out-Null`
+      `(Get-AuthenticodeSignature '${msixPath}').SignerCertificate | Import-Certificate -CertStoreLocation Cert:\\LocalMachine\\Root | Out-Null`
     ],
-    { stdio: 'ignore' }
+    { stdio: 'inherit' }
   )
 
-  return result.status === 0
+  return helper.waitForExit(child)
 }
 
 test('should receive and apply update when update happens while app is running', async (t) => {
@@ -103,7 +103,7 @@ test('should receive and apply update when update happens while app is running',
   }
   if (isWindows) {
     appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater.msix')
-    t.ok(trustMsixCertificate(appBuildPath), 'trusted MSIX certificate successfully')
+    await t.execution(trustMsixCertificate(appBuildPath), 'trusted MSIX certificate successfully')
 
     const MSIXManager = require('msix-manager')
     const manager = new MSIXManager()
@@ -314,7 +314,7 @@ test('should receive and apply update when update happens while app is not runni
   }
   if (isWindows) {
     appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater.msix')
-    t.ok(trustMsixCertificate(appBuildPath), 'trusted MSIX certificate successfully')
+    await t.execution(trustMsixCertificate(appBuildPath), 'trusted MSIX certificate successfully')
 
     const MSIXManager = require('msix-manager')
     const manager = new MSIXManager()
