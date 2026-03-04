@@ -7,12 +7,11 @@ const { isLinux, isMac, isWindows, platform, arch } = require('which-runtime')
 const fs = require('fs')
 const tmpDir = require('test-tmp')
 const Localdrive = require('localdrive')
-const which = require('bare-which')
 const host = platform + '-' + arch
 
 const fixture = path.join(__dirname, 'fixtures', 'updater')
-const npm = which.sync('npm')
-const powershell = isWindows ? which.sync('pwsh') : undefined
+const npm = isWindows ? 'npm.cmd' : 'npm'
+const powershell = 'pwsh.exe'
 
 function getInstalledMsixExe(name) {
   const result = spawnSync(powershell, [
