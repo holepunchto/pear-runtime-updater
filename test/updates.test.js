@@ -7,9 +7,11 @@ const { isLinux, isMac, isWindows, platform, arch } = require('which-runtime')
 const fs = require('fs')
 const tmpDir = require('test-tmp')
 const Localdrive = require('localdrive')
+const which = require('bare-which')
 const host = platform + '-' + arch
 
 const fixture = path.join(__dirname, 'fixtures', 'updater')
+const npm = which.sync('npm')
 
 function getInstalledMsixExe(name) {
   const result = spawnSync('powershell', [
@@ -80,7 +82,7 @@ test('should receive and apply update when update happens while app is running',
 
   t.comment('build app')
   {
-    const child = spawn('npm', ['run', 'make'], { cwd: app })
+    const child = spawn(npm, ['run', 'make'], { cwd: app })
     await t.execution(helper.waitForExit(child), 'app built successfully')
   }
 
@@ -184,7 +186,7 @@ test('should receive and apply update when update happens while app is running',
 
   t.comment('rebuild app')
   {
-    const child = spawn('npm', ['run', 'make'], { cwd: app })
+    const child = spawn(npm, ['run', 'make'], { cwd: app })
     await t.execution(helper.waitForExit(child), 'app rebuilt successfully')
   }
 
@@ -293,7 +295,7 @@ test('should receive and apply update when update happens while app is not runni
 
   t.comment('build app')
   {
-    const child = spawn('npm', ['run', 'make'], { cwd: app })
+    const child = spawn(npm, ['run', 'make'], { cwd: app })
     await t.execution(helper.waitForExit(child), 'app built successfully')
   }
 
@@ -363,7 +365,7 @@ test('should receive and apply update when update happens while app is not runni
 
   t.comment('rebuild app')
   {
-    const child = spawn('npm', ['run', 'make'], { cwd: app })
+    const child = spawn(npm, ['run', 'make'], { cwd: app })
     await t.execution(helper.waitForExit(child), 'app rebuilt successfully')
   }
 

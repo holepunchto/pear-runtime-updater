@@ -65,6 +65,7 @@
     "bare-os": "^3.7.0",
     "bare-process": "^4.2.2",
     "bare-subprocess": "^5.2.2",
+    "bare-which": "^2.0.0",
     "brittle": "^3.19.1",
     "lunte": "^1.6.0",
     "prettier": "^3.8.1",
