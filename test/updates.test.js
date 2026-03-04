@@ -1,15 +1,34 @@
 const test = require('brittle')
-const { spawn } = require('child_process')
+const { spawn, spawnSync } = require('child_process')
 const helper = require('./helper')
 const path = require('path')
 const { env } = require('process')
-const { isLinux, isMac, platform, arch } = require('which-runtime')
+const { isLinux, isMac, isWindows, platform, arch } = require('which-runtime')
 const fs = require('fs')
 const tmpDir = require('test-tmp')
 const Localdrive = require('localdrive')
 const host = platform + '-' + arch
 
 const fixture = path.join(__dirname, 'fixtures', 'updater')
+
+function getInstalledMsixExe(name) {
+  const result = spawnSync('powershell', [
+    '-Command',
+    `(Get-AppxPackage -Name '*${name}*').InstallLocation`
+  ])
+  const installLocation = result.stdout.toString().trim()
+  if (!installLocation) throw new Error('MSIX package not found: ' + name)
+  return path.join(installLocation, name + '.exe')
+}
+
+function removeMsixPackage(name) {
+  const child = spawn(
+    'powershell',
+    ['-Command', `Get-AppxPackage -Name '*${name}*' | Remove-AppxPackage`],
+    { stdio: 'ignore' }
+  )
+  return helper.waitForExit(child).catch(() => {})
+}
 
 test('should receive and apply update when update happens while app is running', async (t) => {
   t.timeout(180_000)
@@ -67,6 +86,14 @@ test('should receive and apply update when update happens while app is running',
     appRunPath = path.join(runDir, 'updater.app')
     await new Localdrive(appBuildPath).mirror(new Localdrive(appRunPath)).done()
   }
+  if (isWindows) {
+    appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater-1.0.0.msix')
+    const MSIXManager = require('msix-manager')
+    const manager = new MSIXManager()
+    await manager.addPackage(appBuildPath)
+    t.teardown(() => removeMsixPackage('updater'))
+    appRunPath = getInstalledMsixExe('updater')
+  }
 
   t.comment('build app structure')
   // TODO: replace with pear-build when single file is supported
@@ -81,6 +108,11 @@ test('should receive and apply update when update happens while app is running',
     const dst = path.join(staging, 'by-arch', host, 'app', 'updater.app')
     await new Localdrive(appBuildPath).mirror(new Localdrive(dst)).done()
   }
+  if (isWindows) {
+    const dst = path.join(staging, 'by-arch', host, 'app', 'updater.msix')
+    await fs.promises.mkdir(path.dirname(dst), { recursive: true })
+    await fs.promises.cp(appBuildPath, dst)
+  }
 
   t.comment('stage')
   await t.execution(stager.stage(staging), 'staged successfully')
@@ -90,7 +122,6 @@ test('should receive and apply update when update happens while app is running',
 
   t.comment('run')
   const runParams = { args: [] }
-  // TODO: Support Windows
   const appDir = await tmpDir(t, { name: `appdir-${helper.getRandomId()}` })
   runParams.appDir = appDir
   const bootstrap = JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`))
@@ -105,6 +136,11 @@ test('should receive and apply update when update happens while app is running',
   if (isMac) {
     runParams.args = [...baseArgs]
     runParams.execPath = path.join(appRunPath, 'Contents', 'MacOS', 'updater')
+  }
+
+  if (isWindows) {
+    runParams.args = [...baseArgs]
+    runParams.execPath = appRunPath
   }
 
   runParams.env = { ...env, ...(isLinux ? { APPIMAGE: runParams.execPath } : {}) }
@@ -146,6 +182,12 @@ test('should receive and apply update when update happens while app is running',
     const dst = path.join(staging, 'by-arch', host, 'app', 'updater.app')
     await new Localdrive(appBuildPath).mirror(new Localdrive(dst)).done()
   }
+  if (isWindows) {
+    appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater-1.0.1.msix')
+    const dst = path.join(staging, 'by-arch', host, 'app', 'updater.msix')
+    await fs.promises.mkdir(path.dirname(dst), { recursive: true })
+    await fs.promises.cp(appBuildPath, dst)
+  }
 
   t.comment('restage')
   const updated = new Promise((resolve) =>
@@ -170,6 +212,10 @@ test('should receive and apply update when update happens while app is running',
   await t.execution(await exit, 'app exited successfully')
 
   t.comment('rerun app')
+  if (isWindows) {
+    appRunPath = getInstalledMsixExe('updater')
+    runParams.execPath = appRunPath
+  }
   run = spawn(runParams.execPath, runParams.args, {
     cwd: app,
     env: runParams.env,
@@ -248,6 +294,14 @@ test('should receive and apply update when update happens while app is not runni
     appRunPath = path.join(runDir, 'updater.app')
     await new Localdrive(appBuildPath).mirror(new Localdrive(appRunPath)).done()
   }
+  if (isWindows) {
+    appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater-1.0.0.msix')
+    const MSIXManager = require('msix-manager')
+    const manager = new MSIXManager()
+    await manager.addPackage(appBuildPath)
+    t.teardown(() => removeMsixPackage('updater'))
+    appRunPath = getInstalledMsixExe('updater')
+  }
 
   t.comment('build app structure')
   // TODO: replace with pear-build when single file is supported
@@ -262,8 +316,11 @@ test('should receive and apply update when update happens while app is not runni
     const dst = path.join(staging, 'by-arch', host, 'app', 'updater.app')
     await new Localdrive(appBuildPath).mirror(new Localdrive(dst)).done()
   }
-
-  t.comment('stage')
+  if (isWindows) {
+    const dst = path.join(staging, 'by-arch', host, 'app', 'updater.msix')
+    await fs.promises.mkdir(path.dirname(dst), { recursive: true })
+    await fs.promises.cp(appBuildPath, dst)
+  }
   await t.execution(stager.stage(staging), 'staged successfully')
 
   t.comment('seed')
@@ -299,13 +356,18 @@ test('should receive and apply update when update happens while app is not runni
     const dst = path.join(staging, 'by-arch', host, 'app', 'updater.app')
     await new Localdrive(appBuildPath).mirror(new Localdrive(dst)).done()
   }
+  if (isWindows) {
+    appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater-1.0.1.msix')
+    const dst = path.join(staging, 'by-arch', host, 'app', 'updater.msix')
+    await fs.promises.mkdir(path.dirname(dst), { recursive: true })
+    await fs.promises.cp(appBuildPath, dst)
+  }
 
   t.comment('restage')
   await t.execution(stager.stage(staging), 'restaged successfully')
 
   t.comment('run')
   const runParams = { args: [] }
-  // TODO: Support Windows
   const appDir = await tmpDir(t, { name: `appdir-${helper.getRandomId()}` })
   runParams.appDir = appDir
   const bootstrap = JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`))
@@ -320,6 +382,11 @@ test('should receive and apply update when update happens while app is not runni
   if (isMac) {
     runParams.args = [...baseArgs]
     runParams.execPath = path.join(appRunPath, 'Contents', 'MacOS', 'updater')
+  }
+
+  if (isWindows) {
+    runParams.args = [...baseArgs]
+    runParams.execPath = appRunPath
   }
 
   runParams.env = { ...env, ...(isLinux ? { APPIMAGE: runParams.execPath } : {}) }
@@ -351,6 +418,10 @@ test('should receive and apply update when update happens while app is not runni
   await t.execution(await exit, 'app exited successfully')
 
   t.comment('rerun app')
+  if (isWindows) {
+    appRunPath = getInstalledMsixExe('updater')
+    runParams.execPath = appRunPath
+  }
   run = spawn(runParams.execPath, runParams.args, {
     cwd: app,
     env: runParams.env,

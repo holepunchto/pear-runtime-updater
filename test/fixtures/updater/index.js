@@ -1,5 +1,5 @@
 const { app, BrowserWindow } = require('electron')
-const { isLinux, isMac } = require('which-runtime')
+const { isLinux, isMac, isWindows } = require('which-runtime')
 const path = require('path')
 const Updater = require('pear-runtime-updater')
 const pkg = require('./package.json')
@@ -49,6 +49,7 @@ app.on('window-all-closed', () => {
 function getAppPath() {
   if (!app.isPackaged) return null
   if (isLinux && process.env.APPIMAGE) return process.env.APPIMAGE
+  if (isWindows) return process.execPath
   return path.join(process.resourcesPath, '..', '..')
 }
 
