@@ -5,6 +5,7 @@ const path = require('path')
 const { env } = require('process')
 const { isLinux, isMac, isWindows, platform, arch } = require('which-runtime')
 const fs = require('fs')
+const os = require('os')
 const tmpDir = require('test-tmp')
 const Localdrive = require('localdrive')
 const host = platform + '-' + arch
@@ -37,7 +38,7 @@ function trustMsixCertificate(msixPath) {
     powershell,
     [
       '-Command',
-      `(Get-AuthenticodeSignature '${msixPath}').SignerCertificate | Import-Certificate -CertStoreLocation Cert:\\LocalMachine\\Root | Out-Null`
+      `$sig=(Get-AuthenticodeSignature '${msixPath}').SignerCertificate; Export-Certificate -Cert $sig -FilePath "$env:TEMP\\msix-sign.cer" -Force | Out-Null; Import-Certificate -FilePath "$env:TEMP\\msix-sign.cer" -CertStoreLocation Cert:\\LocalMachine\\Root | Out-Null; Remove-Item "$env:TEMP\\msix-sign.cer" -Force;`
     ],
     { stdio: 'inherit' }
   )
