@@ -82,7 +82,7 @@ test('should receive and apply update when update happens while app is running',
 
   t.comment('build app')
   {
-    const child = spawn(npm, ['run', 'make'], { cwd: app })
+    const child = spawn(npm, ['run', 'make'], { cwd: app, shell: true })
     await t.execution(helper.waitForExit(child), 'app built successfully')
   }
 
@@ -190,7 +190,7 @@ test('should receive and apply update when update happens while app is running',
       fs.promises.rm(path.join(app, 'out'), { recursive: true }),
       'removed old build successfully'
     )
-    const child = spawn(npm, ['run', 'make'], { cwd: app })
+    const child = spawn(npm, ['run', 'make'], { cwd: app, shell: true })
     await t.execution(helper.waitForExit(child), 'app rebuilt successfully')
   }
 
@@ -301,7 +301,7 @@ test('should receive and apply update when update happens while app is not runni
 
   t.comment('build app')
   {
-    const child = spawn(npm, ['run', 'make'], { cwd: app })
+    const child = spawn(npm, ['run', 'make'], { cwd: app, shell: true })
     await t.execution(helper.waitForExit(child), 'app built successfully')
   }
 
@@ -373,7 +373,7 @@ test('should receive and apply update when update happens while app is not runni
       fs.promises.rm(path.join(app, 'out'), { recursive: true }),
       'removed old build successfully'
     )
-    const child = spawn(npm, ['run', 'make'], { cwd: app })
+    const child = spawn(npm, ['run', 'make'], { cwd: app, shell: true })
     await t.execution(helper.waitForExit(child), 'app rebuilt successfully')
   }
 
