@@ -103,16 +103,14 @@ test('should receive and apply update when update happens while app is running',
   }
   if (isWindows) {
     appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater.msix')
+    t.ok(trustMsixCertificate(appBuildPath), 'trusted MSIX certificate successfully')
+
     const MSIXManager = require('msix-manager')
     const manager = new MSIXManager()
-    await manager.addPackage(appBuildPath)
+    await t.execution(manager.addPackage(appBuildPath), 'installed app successfully')
     t.teardown(() => removeMsixPackage('updater'))
-    appRunPath = getInstalledMsixExe('updater')
-  }
 
-  if (isWindows) {
-    t.comment('trust MSIX certificate')
-    t.ok(trustMsixCertificate(appBuildPath), 'trusted MSIX certificate successfully')
+    appRunPath = getInstalledMsixExe('updater')
   }
 
   t.comment('build app structure')
@@ -316,16 +314,14 @@ test('should receive and apply update when update happens while app is not runni
   }
   if (isWindows) {
     appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater.msix')
+    t.ok(trustMsixCertificate(appBuildPath), 'trusted MSIX certificate successfully')
+
     const MSIXManager = require('msix-manager')
     const manager = new MSIXManager()
-    await manager.addPackage(appBuildPath)
+    await t.execution(manager.addPackage(appBuildPath), 'installed app successfully')
     t.teardown(() => removeMsixPackage('updater'))
-    appRunPath = getInstalledMsixExe('updater')
-  }
 
-  if (isWindows) {
-    t.comment('trust MSIX certificate')
-    t.ok(trustMsixCertificate(appBuildPath), 'trusted MSIX certificate successfully')
+    appRunPath = getInstalledMsixExe('updater')
   }
 
   t.comment('build app structure')
