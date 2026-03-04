@@ -1,5 +1,5 @@
 const { app, BrowserWindow } = require('electron')
-const { isLinux } = require('which-runtime')
+const { isLinux, isMac } = require('which-runtime')
 const path = require('path')
 const Updater = require('pear-runtime-updater')
 const pkg = require('./package.json')
@@ -8,7 +8,7 @@ const { version, upgrade } = pkg
 const CI = !!process.env.CI
 if (CI) app.disableHardwareAcceleration()
 
-const positionalArgs = process.argv.slice(2).filter((arg) => !arg.startsWith('-'))
+const positionalArgs = process.argv.slice(isMac ? 1 : 2).filter((arg) => !arg.startsWith('-'))
 const dir = positionalArgs?.[0]
 const bootstrap = positionalArgs?.[1] ? JSON.parse(positionalArgs[1]) : undefined
 
