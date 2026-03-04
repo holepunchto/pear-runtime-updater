@@ -30,6 +30,19 @@ function removeMsixPackage(name) {
   return helper.waitForExit(child).catch(() => {})
 }
 
+function trustMsixCertificate(msixPath) {
+  const result = spawnSync(
+    'powershell',
+    [
+      '-Command',
+      `(Get-AuthenticodeSignature ${msixPath}).SignerCertificate | Import-Certificate -CertStoreLocation Cert:\\LocalMachine\\Root | Out-Null`
+    ],
+    { stdio: 'ignore' }
+  )
+
+  return result.status === 0
+}
+
 test('should receive and apply update when update happens while app is running', async (t) => {
   t.timeout(180_000)
 
@@ -93,6 +106,11 @@ test('should receive and apply update when update happens while app is running',
     await manager.addPackage(appBuildPath)
     t.teardown(() => removeMsixPackage('updater'))
     appRunPath = getInstalledMsixExe('updater')
+  }
+
+  if (isWindows) {
+    t.comment('trust MSIX certificate')
+    t.ok(trustMsixCertificate(appBuildPath), 'trusted MSIX certificate successfully')
   }
 
   t.comment('build app structure')
@@ -301,6 +319,11 @@ test('should receive and apply update when update happens while app is not runni
     await manager.addPackage(appBuildPath)
     t.teardown(() => removeMsixPackage('updater'))
     appRunPath = getInstalledMsixExe('updater')
+  }
+
+  if (isWindows) {
+    t.comment('trust MSIX certificate')
+    t.ok(trustMsixCertificate(appBuildPath), 'trusted MSIX certificate successfully')
   }
 
   t.comment('build app structure')
