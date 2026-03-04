@@ -184,6 +184,7 @@ test('should receive and apply update when update happens while app is running',
 
   t.comment('rebuild app')
   {
+    await t.execution(fs.promises.unlink(path.join(app, 'out')), 'removed old build successfully')
     const child = spawn(npm, ['run', 'make'], { cwd: app })
     await t.execution(helper.waitForExit(child), 'app rebuilt successfully')
   }
@@ -361,6 +362,7 @@ test('should receive and apply update when update happens while app is not runni
 
   t.comment('rebuild app')
   {
+    await t.execution(fs.promises.unlink(path.join(app, 'out')), 'removed old build successfully')
     const child = spawn(npm, ['run', 'make'], { cwd: app })
     await t.execution(helper.waitForExit(child), 'app rebuilt successfully')
   }
