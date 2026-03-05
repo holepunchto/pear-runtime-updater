@@ -423,8 +423,6 @@ test('should receive and apply update when update happens while app is not runni
     env: runParams.env,
     stdio: 'pipe'
   })
-  run.stdout.on('data', (data) => console.log('app stdout', data.toString()))
-  run.stderr.on('data', (data) => console.log('app stderr', data.toString()))
   // on Windows the process may exit with code 1 when terminated by the msix installer
   let exit = helper.waitForExit(run, isWindows ? [0, 1] : [0])
   const updated = new Promise((resolve) =>
@@ -449,8 +447,6 @@ test('should receive and apply update when update happens while app is not runni
     env: runParams.env,
     stdio: 'pipe'
   })
-  run.stdout.on('data', (data) => console.log('app stdout', data.toString()))
-  run.stderr.on('data', (data) => console.error('app stderr', data.toString()))
   exit = helper.waitForExit(run)
 
   t.comment('wait for version')
