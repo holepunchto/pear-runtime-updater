@@ -139,14 +139,13 @@ test('should receive and apply update when update happens while app is running',
   t.comment('run')
   const runParams = { args: [] }
   const appDir = await tmpDir(t, { name: `appdir-${helper.getRandomId()}` })
-  runParams.appDir = appDir
   const bootstrap = JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`))
   const baseArgs = [appDir, bootstrap]
 
   if (isLinux) {
     // needed because GHA does not support FUSE and SUID sandboxing
     runParams.args = ['--appimage-extract-and-run', '--no-sandbox', ...baseArgs]
-    runParams.execPath = path.join(appRunPath)
+    runParams.execPath = appRunPath
   }
 
   if (isMac) {
@@ -386,14 +385,13 @@ test('should receive and apply update when update happens while app is not runni
   t.comment('run')
   const runParams = { args: [] }
   const appDir = await tmpDir(t, { name: `appdir-${helper.getRandomId()}` })
-  runParams.appDir = appDir
   const bootstrap = JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`))
   const baseArgs = [appDir, bootstrap]
 
   if (isLinux) {
     // needed because GHA does not support FUSE and SUID sandboxing
     runParams.args = ['--appimage-extract-and-run', '--no-sandbox', ...baseArgs]
-    runParams.execPath = path.join(appRunPath)
+    runParams.execPath = appRunPath
   }
 
   if (isMac) {
