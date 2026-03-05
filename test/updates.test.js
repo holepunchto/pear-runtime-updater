@@ -168,8 +168,6 @@ test('should receive and apply update when update happens while app is running',
     env: runParams.env,
     stdio: 'pipe'
   })
-  run.stdout.on('data', (data) => console.log('app stdout', data.toString()))
-  run.stderr.on('data', (data) => console.log('app stderr', data.toString()))
   // on Windows the process may exit with code 1 when terminated by the msix installer
   let exit = helper.waitForExit(run, isWindows ? [0, 1] : [0])
 
@@ -239,8 +237,6 @@ test('should receive and apply update when update happens while app is running',
     env: runParams.env,
     stdio: 'pipe'
   })
-  run.stdout.on('data', (data) => console.log('app stdout', data.toString()))
-  run.stderr.on('data', (data) => console.log('app stderr', data.toString()))
   exit = helper.waitForExit(run)
 
   t.comment('wait for version')
