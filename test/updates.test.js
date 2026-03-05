@@ -7,6 +7,7 @@ const { isLinux, isMac, isWindows, platform, arch } = require('which-runtime')
 const fs = require('fs')
 const tmpDir = require('test-tmp')
 const Localdrive = require('localdrive')
+const pearBuild = require('pear-build')
 const host = platform + '-' + arch
 
 const fixture = path.join(__dirname, 'fixtures', 'updater')
@@ -81,29 +82,34 @@ test('should receive and apply update when update happens while app is running',
   }
 
   t.comment('build app')
+  let appBuildPath
   {
     const child = spawn(npm, ['run', 'make'], { cwd: app, shell: true })
     await t.execution(helper.waitForExit(child), 'app built successfully')
   }
+  if (isLinux) {
+    appBuildPath = path.join(app, 'out', 'make', `updater.AppImage`)
+    await fs.promises.rename(
+      path.join(app, 'out', 'make', `updater-1.0.0-${arch}.AppImage`),
+      appBuildPath
+    )
+  }
+  if (isMac) appBuildPath = path.join(app, 'out', `updater-${host}`, 'updater.app')
+  if (isWindows) appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater.msix')
 
-  if (isWindows) t.comment('trust and install app')
-  else t.comment('copy build to run dir')
+  t.comment(isWindows ? 'trust and install app' : 'copy build to run dir')
   const runDir = await tmpDir(t, { name: `run-${helper.getRandomId()}` })
-  let appBuildPath
   let appRunPath
   if (isLinux) {
-    appBuildPath = path.join(app, 'out', 'make', `updater-1.0.0-${arch}.AppImage`)
     appRunPath = path.join(runDir, 'updater.AppImage')
     await fs.promises.mkdir(path.dirname(appRunPath), { recursive: true })
     await fs.promises.cp(appBuildPath, appRunPath)
   }
   if (isMac) {
-    appBuildPath = path.join(app, 'out', `updater-${host}`, 'updater.app')
     appRunPath = path.join(runDir, 'updater.app')
     await new Localdrive(appBuildPath).mirror(new Localdrive(appRunPath)).done()
   }
   if (isWindows) {
-    appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater.msix')
     await t.execution(trustMsixCertificate(appBuildPath), 'trusted MSIX certificate successfully')
 
     const MSIXManager = require('msix-manager')
@@ -114,24 +120,15 @@ test('should receive and apply update when update happens while app is running',
     appRunPath = getInstalledMsixExe('updater')
   }
 
-  t.comment('build app structure')
-  // TODO: replace with pear-build when single file is supported
+  t.comment('run pear-build')
   const staging = await tmpDir(t, { name: `staging-${helper.getRandomId()}` })
-  await new Localdrive(app).mirror(new Localdrive(staging), { prefix: 'package.json' }).done()
-  if (isLinux) {
-    const dst = path.join(staging, 'by-arch', host, 'app', 'updater.AppImage')
-    await fs.promises.mkdir(path.dirname(dst), { recursive: true })
-    await fs.promises.cp(appBuildPath, dst)
-  }
-  if (isMac) {
-    const dst = path.join(staging, 'by-arch', host, 'app', 'updater.app')
-    await new Localdrive(appBuildPath).mirror(new Localdrive(dst)).done()
-  }
-  if (isWindows) {
-    const dst = path.join(staging, 'by-arch', host, 'app', 'updater.msix')
-    await fs.promises.mkdir(path.dirname(dst), { recursive: true })
-    await fs.promises.cp(appBuildPath, dst)
-  }
+  await t.execution(
+    pearBuild(path.join(app, 'package.json'), {
+      [`${platform}${arch.charAt(0).toUpperCase() + arch.slice(1)}App`]: appBuildPath,
+      target: staging
+    }),
+    'pear-build ran successfully'
+  )
 
   t.comment('stage')
   await t.execution(stager.stage(staging), 'staged successfully')
@@ -193,25 +190,21 @@ test('should receive and apply update when update happens while app is running',
     const child = spawn(npm, ['run', 'make'], { cwd: app, shell: true })
     await t.execution(helper.waitForExit(child), 'app rebuilt successfully')
   }
-
-  t.comment('rebuild app structure')
-  await new Localdrive(app).mirror(new Localdrive(staging), { prefix: 'package.json' }).done()
   if (isLinux) {
-    appBuildPath = path.join(app, 'out', 'make', `updater-1.0.1-${arch}.AppImage`)
-    const dst = path.join(staging, 'by-arch', host, 'app', 'updater.AppImage')
-    await fs.promises.mkdir(path.dirname(dst), { recursive: true })
-    await fs.promises.cp(appBuildPath, dst)
+    await fs.promises.rename(
+      path.join(app, 'out', 'make', `updater-1.0.1-${arch}.AppImage`),
+      appBuildPath
+    )
   }
-  if (isMac) {
-    const dst = path.join(staging, 'by-arch', host, 'app', 'updater.app')
-    await new Localdrive(appBuildPath).mirror(new Localdrive(dst)).done()
-  }
-  if (isWindows) {
-    appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater.msix')
-    const dst = path.join(staging, 'by-arch', host, 'app', 'updater.msix')
-    await fs.promises.mkdir(path.dirname(dst), { recursive: true })
-    await fs.promises.cp(appBuildPath, dst)
-  }
+
+  t.comment('rerun pear-build')
+  await t.execution(
+    pearBuild(path.join(app, 'package.json'), {
+      [`${platform}${arch.charAt(0).toUpperCase() + arch.slice(1)}App`]: appBuildPath,
+      target: staging
+    }),
+    'pear-build ran successfully'
+  )
 
   t.comment('restage')
   const updated = new Promise((resolve) =>
@@ -296,29 +289,34 @@ test('should receive and apply update when update happens while app is not runni
   }
 
   t.comment('build app')
+  let appBuildPath
   {
     const child = spawn(npm, ['run', 'make'], { cwd: app, shell: true })
     await t.execution(helper.waitForExit(child), 'app built successfully')
   }
+  if (isLinux) {
+    appBuildPath = path.join(app, 'out', 'make', `updater.AppImage`)
+    await fs.promises.rename(
+      path.join(app, 'out', 'make', `updater-1.0.0-${arch}.AppImage`),
+      appBuildPath
+    )
+  }
+  if (isMac) appBuildPath = path.join(app, 'out', `updater-${host}`, 'updater.app')
+  if (isWindows) appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater.msix')
 
-  if (isWindows) t.comment('trust and install app')
-  else t.comment('copy build to run dir')
+  t.comment(isWindows ? 'trust and install app' : 'copy build to run dir')
   const runDir = await tmpDir(t, { name: `run-${helper.getRandomId()}` })
-  let appBuildPath
   let appRunPath
   if (isLinux) {
-    appBuildPath = path.join(app, 'out', 'make', `updater-1.0.0-${arch}.AppImage`)
     appRunPath = path.join(runDir, 'updater.AppImage')
     await fs.promises.mkdir(path.dirname(appRunPath), { recursive: true })
     await fs.promises.cp(appBuildPath, appRunPath)
   }
   if (isMac) {
-    appBuildPath = path.join(app, 'out', `updater-${host}`, 'updater.app')
     appRunPath = path.join(runDir, 'updater.app')
     await new Localdrive(appBuildPath).mirror(new Localdrive(appRunPath)).done()
   }
   if (isWindows) {
-    appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater.msix')
     await t.execution(trustMsixCertificate(appBuildPath), 'trusted MSIX certificate successfully')
 
     const MSIXManager = require('msix-manager')
@@ -329,24 +327,17 @@ test('should receive and apply update when update happens while app is not runni
     appRunPath = getInstalledMsixExe('updater')
   }
 
-  t.comment('build app structure')
-  // TODO: replace with pear-build when single file is supported
+  t.comment('run pear-build')
   const staging = await tmpDir(t, { name: `staging-${helper.getRandomId()}` })
-  await new Localdrive(app).mirror(new Localdrive(staging), { prefix: 'package.json' }).done()
-  if (isLinux) {
-    const dst = path.join(staging, 'by-arch', host, 'app', 'updater.AppImage')
-    await fs.promises.mkdir(path.dirname(dst), { recursive: true })
-    await fs.promises.cp(appBuildPath, dst)
-  }
-  if (isMac) {
-    const dst = path.join(staging, 'by-arch', host, 'app', 'updater.app')
-    await new Localdrive(appBuildPath).mirror(new Localdrive(dst)).done()
-  }
-  if (isWindows) {
-    const dst = path.join(staging, 'by-arch', host, 'app', 'updater.msix')
-    await fs.promises.mkdir(path.dirname(dst), { recursive: true })
-    await fs.promises.cp(appBuildPath, dst)
-  }
+  await t.execution(
+    pearBuild(path.join(app, 'package.json'), {
+      [`${platform}${arch.charAt(0).toUpperCase() + arch.slice(1)}App`]: appBuildPath,
+      target: staging
+    }),
+    'pear-build ran successfully'
+  )
+
+  t.comment('stage')
   await t.execution(stager.stage(staging), 'staged successfully')
 
   t.comment('seed')
@@ -373,25 +364,21 @@ test('should receive and apply update when update happens while app is not runni
     const child = spawn(npm, ['run', 'make'], { cwd: app, shell: true })
     await t.execution(helper.waitForExit(child), 'app rebuilt successfully')
   }
-
-  t.comment('rebuild app structure')
-  await new Localdrive(app).mirror(new Localdrive(staging), { prefix: 'package.json' }).done()
   if (isLinux) {
-    appBuildPath = path.join(app, 'out', 'make', `updater-1.0.1-${arch}.AppImage`)
-    const dst = path.join(staging, 'by-arch', host, 'app', 'updater.AppImage')
-    await fs.promises.mkdir(path.dirname(dst), { recursive: true })
-    await fs.promises.cp(appBuildPath, dst)
+    await fs.promises.rename(
+      path.join(app, 'out', 'make', `updater-1.0.1-${arch}.AppImage`),
+      appBuildPath
+    )
   }
-  if (isMac) {
-    const dst = path.join(staging, 'by-arch', host, 'app', 'updater.app')
-    await new Localdrive(appBuildPath).mirror(new Localdrive(dst)).done()
-  }
-  if (isWindows) {
-    appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater.msix')
-    const dst = path.join(staging, 'by-arch', host, 'app', 'updater.msix')
-    await fs.promises.mkdir(path.dirname(dst), { recursive: true })
-    await fs.promises.cp(appBuildPath, dst)
-  }
+
+  t.comment('rerun pear-build')
+  await t.execution(
+    pearBuild(path.join(app, 'package.json'), {
+      [`${platform}${arch.charAt(0).toUpperCase() + arch.slice(1)}App`]: appBuildPath,
+      target: staging
+    }),
+    'pear-build ran successfully'
+  )
 
   t.comment('restage')
   await t.execution(stager.stage(staging), 'restaged successfully')
