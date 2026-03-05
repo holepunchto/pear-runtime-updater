@@ -227,6 +227,11 @@ test('should receive and apply update when update happens while app is running',
   t.comment('wait for exit')
   await t.execution(await exit, 'app exited successfully')
 
+  if (isWindows) {
+    t.comment('give time for MSIX installer to finish')
+    await new Promise((resolve) => setTimeout(resolve, 5000))
+  }
+
   t.comment('rerun app')
   if (isWindows) {
     appRunPath = getInstalledMsixExe('updater')
@@ -432,6 +437,11 @@ test('should receive and apply update when update happens while app is not runni
 
   t.comment('wait for exit')
   await t.execution(await exit, 'app exited successfully')
+
+  if (isWindows) {
+    t.comment('give time for MSIX installer to finish')
+    await new Promise((resolve) => setTimeout(resolve, 5000))
+  }
 
   t.comment('rerun app')
   if (isWindows) {
