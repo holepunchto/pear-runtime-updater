@@ -58,10 +58,6 @@ module.exports = {
     }
   },
 
-  getRandomId() {
-    return Math.random().toString(16).slice(2)
-  },
-
   async waitForExit(child, exitCodes = [0]) {
     await new Promise((resolve, reject) => {
       child.on('exit', (code) => {

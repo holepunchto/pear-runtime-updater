@@ -52,7 +52,7 @@ test('should receive and apply update when update happens while app is running',
   const testnet = await helper.createTestnet()
   t.teardown(() => testnet.destroy())
 
-  const stagerDir = await tmpDir(t, { name: `platform-${helper.getRandomId()}` })
+  const stagerDir = await tmpDir(t)
 
   t.comment('prepare stager')
   const stager = new helper.Stager({
@@ -65,7 +65,7 @@ test('should receive and apply update when update happens while app is running',
   t.ok(link, `prepared ${link}`)
 
   t.comment('prepare copy of fixture')
-  const app = await tmpDir(t, { name: `fixture-${helper.getRandomId()}` })
+  const app = await tmpDir(t)
   await new Localdrive(fixture).mirror(new Localdrive(app)).done()
 
   t.comment('update app version and link')
@@ -97,7 +97,7 @@ test('should receive and apply update when update happens while app is running',
   if (isWindows) appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater.msix')
 
   t.comment(isWindows ? 'trust and install app' : 'copy build to run dir')
-  const runDir = await tmpDir(t, { name: `run-${helper.getRandomId()}` })
+  const runDir = await tmpDir(t)
   let appRunPath
   if (isLinux) {
     appRunPath = path.join(runDir, 'updater.AppImage')
@@ -120,7 +120,7 @@ test('should receive and apply update when update happens while app is running',
   }
 
   t.comment('run pear-build')
-  const staging = await tmpDir(t, { name: `staging-${helper.getRandomId()}` })
+  const staging = await tmpDir(t)
   await t.execution(
     pearBuild(path.join(app, 'package.json'), {
       [`${platform}${arch.charAt(0).toUpperCase() + arch.slice(1)}App`]: appBuildPath,
@@ -137,7 +137,7 @@ test('should receive and apply update when update happens while app is running',
 
   t.comment('run')
   const runParams = { args: [] }
-  const appDir = await tmpDir(t, { name: `appdir-${helper.getRandomId()}` })
+  const appDir = await tmpDir(t)
   const bootstrap = JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`))
   const baseArgs = [appDir, bootstrap]
 
@@ -254,7 +254,7 @@ test('should receive and apply update when update happens while app is not runni
   const testnet = await helper.createTestnet()
   t.teardown(() => testnet.destroy())
 
-  const stagerDir = await tmpDir(t, { name: `platform-${helper.getRandomId()}` })
+  const stagerDir = await tmpDir(t)
 
   t.comment('prepare stager')
   const stager = new helper.Stager({
@@ -267,7 +267,7 @@ test('should receive and apply update when update happens while app is not runni
   t.ok(link, `prepared ${link}`)
 
   t.comment('prepare copy of fixture')
-  const app = await tmpDir(t, { name: `fixture-${helper.getRandomId()}` })
+  const app = await tmpDir(t)
   await new Localdrive(fixture).mirror(new Localdrive(app)).done()
 
   t.comment('update app version and link')
@@ -299,7 +299,7 @@ test('should receive and apply update when update happens while app is not runni
   if (isWindows) appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater.msix')
 
   t.comment(isWindows ? 'trust and install app' : 'copy build to run dir')
-  const runDir = await tmpDir(t, { name: `run-${helper.getRandomId()}` })
+  const runDir = await tmpDir(t)
   let appRunPath
   if (isLinux) {
     appRunPath = path.join(runDir, 'updater.AppImage')
@@ -322,7 +322,7 @@ test('should receive and apply update when update happens while app is not runni
   }
 
   t.comment('run pear-build')
-  const staging = await tmpDir(t, { name: `staging-${helper.getRandomId()}` })
+  const staging = await tmpDir(t)
   await t.execution(
     pearBuild(path.join(app, 'package.json'), {
       [`${platform}${arch.charAt(0).toUpperCase() + arch.slice(1)}App`]: appBuildPath,
@@ -379,7 +379,7 @@ test('should receive and apply update when update happens while app is not runni
 
   t.comment('run')
   const runParams = { args: [] }
-  const appDir = await tmpDir(t, { name: `appdir-${helper.getRandomId()}` })
+  const appDir = await tmpDir(t)
   const bootstrap = JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`))
   const baseArgs = [appDir, bootstrap]
 
