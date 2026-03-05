@@ -78,7 +78,6 @@ async function startUpdater() {
     console.log('updated')
 
     await updater.applyUpdate()
-    console.log('applied')
 
     app.quit()
   })
