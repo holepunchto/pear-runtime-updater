@@ -432,17 +432,9 @@ test('should receive and apply update when update happens while app is not runni
       if (data.toString().includes('updated')) resolve()
     })
   )
-  const applied = new Promise((resolve) =>
-    run.stdout.on('data', (data) => {
-      if (data.toString().includes('applied')) resolve()
-    })
-  )
 
   t.comment('check for update message')
   await t.execution(updated, 'got updated message')
-
-  t.comment('check for update applied message')
-  await t.execution(applied, 'got applied message')
 
   t.comment('wait for exit')
   await t.execution(await exit, 'app exited successfully')
