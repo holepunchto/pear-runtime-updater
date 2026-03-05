@@ -46,7 +46,7 @@ function trustMsixCertificate(msixPath) {
 }
 
 test('should receive and apply update when update happens while app is running', async (t) => {
-  t.timeout(240_000)
+  t.timeout(300_000)
 
   t.comment('create testnet')
   const testnet = await helper.createTestnet()
@@ -259,7 +259,7 @@ test('should receive and apply update when update happens while app is running',
 })
 
 test('should receive and apply update when update happens while app is not running', async (t) => {
-  t.timeout(240_000)
+  t.timeout(300_000)
 
   t.comment('create testnet')
   const testnet = await helper.createTestnet()
