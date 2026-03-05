@@ -62,10 +62,10 @@ module.exports = {
     return Math.random().toString(16).slice(2)
   },
 
-  async waitForExit(child) {
+  async waitForExit(child, exitCodes = [0]) {
     await new Promise((resolve, reject) => {
       child.on('exit', (code) => {
-        if (code === 0) resolve()
+        if (exitCodes.includes(code)) resolve()
         else reject(new Error(`Failed with exit code ${code}`))
       })
       child.on('error', reject)

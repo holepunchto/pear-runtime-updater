@@ -170,7 +170,8 @@ test('should receive and apply update when update happens while app is running',
   })
   run.stdout.on('data', (data) => console.log('app stdout', data.toString()))
   run.stderr.on('data', (data) => console.log('app stderr', data.toString()))
-  let exit = helper.waitForExit(run)
+  // on Windows the process may exit with code 1 when terminated by the msix installer
+  let exit = helper.waitForExit(run, isWindows ? [0, 1] : [0])
 
   t.comment('update app version')
   {
@@ -424,7 +425,8 @@ test('should receive and apply update when update happens while app is not runni
   })
   run.stdout.on('data', (data) => console.log('app stdout', data.toString()))
   run.stderr.on('data', (data) => console.log('app stderr', data.toString()))
-  let exit = helper.waitForExit(run)
+  // on Windows the process may exit with code 1 when terminated by the msix installer
+  let exit = helper.waitForExit(run, isWindows ? [0, 1] : [0])
   const updated = new Promise((resolve) =>
     run.stdout.on('data', (data) => {
       if (data.toString().includes('updated')) resolve()
