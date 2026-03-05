@@ -93,19 +93,9 @@ module.exports = class PearRuntime extends ReadyResource {
 
     const nextApp = path.join(this.next, 'by-arch', host, 'app', this.name)
     if (isWindows) {
-      console.log('Updating to', nextApp)
-      console.log(fs.existsSync(nextApp) ? 'File exists' : 'File does not exist')
       const MSIXManager = require('msix-manager') // require must be here for platform compatibility
-      console.log('Instantiating MSIXManager')
       const manager = new MSIXManager()
-      console.log('Installing', nextApp)
-      try {
-        await manager.addPackage(nextApp)
-      } catch (err) {
-        console.error('Failed to install MSIX package:', err)
-        throw err
-      }
-      console.log('Installed')
+      await manager.addPackage(nextApp)
     } else {
       await fsx.swap(nextApp, this.app)
     }
@@ -147,7 +137,6 @@ module.exports = class PearRuntime extends ReadyResource {
     await local.close()
 
     this.checkout = null
-    console.log('update from length', this.length, 'to length', length)
     this.length = length
     this.next = next
 

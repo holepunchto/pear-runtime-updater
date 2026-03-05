@@ -231,7 +231,6 @@ test('should receive and apply update when update happens while app is running',
   t.comment('rerun app')
   if (isWindows) {
     appRunPath = getInstalledMsixExe('updater')
-    console.log('new appRunPath', runParams.execPath, '=>', appRunPath)
     runParams.execPath = appRunPath
   }
   run = spawn(runParams.execPath, runParams.args, {
@@ -449,7 +448,6 @@ test('should receive and apply update when update happens while app is not runni
   t.comment('rerun app')
   if (isWindows) {
     appRunPath = getInstalledMsixExe('updater')
-    console.log('new appRunPath', runParams.execPath, '=>', appRunPath)
     runParams.execPath = appRunPath
   }
   run = spawn(runParams.execPath, runParams.args, {
