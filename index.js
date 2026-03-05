@@ -2,13 +2,14 @@ const Hyperswarm = require('hyperswarm')
 const Hyperdrive = require('hyperdrive')
 const Localdrive = require('localdrive')
 const Corestore = require('corestore')
+const { spawnSync } = require('bare-subprocess')
 const path = require('path')
 const fs = require('fs')
 const fsx = require('fs-native-extensions')
 const ReadyResource = require('ready-resource')
 const link = require('pear-link')
 const hid = require('hypercore-id-encoding')
-const { platform, arch, isWindows } = require('which-runtime')
+const { platform, arch, isWindows, isMac } = require('which-runtime')
 const host = platform + '-' + arch
 
 module.exports = class PearRuntime extends ReadyResource {
@@ -24,6 +25,7 @@ module.exports = class PearRuntime extends ReadyResource {
     this.name = opts.name ?? (this.app && path.basename(this.app))
     if (isWindows) this.name = path.basename(this.name, path.extname(this.name)) + '.msix'
     this.bundled = opts.bundled || !!this.app
+    this.bypassOSVerify = opts.bypassOSVerify
 
     if (this.updates) {
       const { drive: upgrade } = link.parse(opts.upgrade)
@@ -91,6 +93,15 @@ module.exports = class PearRuntime extends ReadyResource {
     this.applied = true
 
     const nextApp = path.join(this.next, 'by-arch', host, 'app', this.name)
+
+    if (this.bypassOSVerify) {
+      if (isMac) {
+        spawnSync('xattr', ['-dr', 'com.apple.quarantine', nextApp])
+      } else if (isWindows) {
+        spawnSync('powershell', ['-Command', `Unblock-File -Path "${nextApp}"`])
+      }
+    }
+
     if (isWindows) {
       const MSIXManager = require('msix-manager') // require must be here for platform compatibility
       const manager = new MSIXManager()
