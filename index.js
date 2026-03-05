@@ -9,6 +9,7 @@ const ReadyResource = require('ready-resource')
 const link = require('pear-link')
 const hid = require('hypercore-id-encoding')
 const { platform, arch, isWindows } = require('which-runtime')
+const { spawnSync } = require('child_process')
 const host = platform + '-' + arch
 
 module.exports = class PearRuntime extends ReadyResource {
@@ -95,17 +96,13 @@ module.exports = class PearRuntime extends ReadyResource {
     if (isWindows) {
       console.log('Updating to', nextApp)
       console.log(fs.existsSync(nextApp) ? 'File exists' : 'File does not exist')
-      const MSIXManager = require('msix-manager') // require must be here for platform compatibility
-      console.log('Instantiating MSIXManager')
-      const manager = new MSIXManager()
-      console.log('Installing', nextApp)
-      try {
-        await manager.addPackage(nextApp)
-      } catch (err) {
-        console.error('Failed to install MSIX package:', err)
-        throw err
-      }
-      console.log('Installed')
+      const result = spawnSync(
+        'powershell',
+        ['-Command', 'Add-AppxPackage -Path "' + nextApp + '"'],
+        { shell: true, stdio: 'inherit' }
+      )
+
+      console.log('Installed', result.status === 0 ? 'successfully' : 'with errors')
     } else {
       await fsx.swap(nextApp, this.app)
     }
