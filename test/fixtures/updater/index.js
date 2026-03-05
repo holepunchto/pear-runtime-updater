@@ -6,7 +6,11 @@ const pkg = require('./package.json')
 const { version, upgrade } = pkg
 
 const CI = !!process.env.CI
-if (CI) app.disableHardwareAcceleration()
+if (CI) {
+  app.disableHardwareAcceleration()
+  app.commandLine.appendSwitch('no-sandbox')
+  app.commandLine.appendSwitch('disable-dev-shm-usage')
+}
 
 const positionalArgs = process.argv.slice(isLinux ? 2 : 1).filter((arg) => !arg.startsWith('-'))
 const dir = positionalArgs?.[0]
