@@ -100,7 +100,7 @@ module.exports = class PearRuntime extends ReadyResource {
       const manager = new MSIXManager()
       console.log('Installing', nextApp)
       try {
-        manager.addPackage(nextApp)
+        await manager.addPackage(nextApp)
       } catch (err) {
         console.error('Failed to install MSIX package:', err)
         throw err
