@@ -86,7 +86,8 @@ test('should receive and apply update when update happens while app is running',
     await t.execution(helper.waitForExit(child), 'app built successfully')
   }
 
-  t.comment('copy build to run dir')
+  if (isWindows) t.comment('trust and install app')
+  else t.comment('copy build to run dir')
   const runDir = await tmpDir(t, { name: `run-${helper.getRandomId()}` })
   let appBuildPath
   let appRunPath
@@ -168,7 +169,7 @@ test('should receive and apply update when update happens while app is running',
     env: runParams.env,
     stdio: 'pipe'
   })
-  // on Windows the process may exit with code 1 when terminated by the msix installer
+  // On Windows, the process may exit with code 1 when terminated by the MSIX installer
   let exit = helper.waitForExit(run, isWindows ? [0, 1] : [0])
 
   t.comment('update app version')
@@ -300,7 +301,8 @@ test('should receive and apply update when update happens while app is not runni
     await t.execution(helper.waitForExit(child), 'app built successfully')
   }
 
-  t.comment('copy build to run dir')
+  if (isWindows) t.comment('trust and install app')
+  else t.comment('copy build to run dir')
   const runDir = await tmpDir(t, { name: `run-${helper.getRandomId()}` })
   let appBuildPath
   let appRunPath
@@ -424,7 +426,7 @@ test('should receive and apply update when update happens while app is not runni
     env: runParams.env,
     stdio: 'pipe'
   })
-  // on Windows the process may exit with code 1 when terminated by the msix installer
+  // On Windows, the process may exit with code 1 when terminated by the MSIX installer
   let exit = helper.waitForExit(run, isWindows ? [0, 1] : [0])
   const updated = new Promise((resolve) =>
     run.stdout.on('data', (data) => {
