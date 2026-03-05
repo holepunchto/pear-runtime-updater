@@ -8,8 +8,8 @@ const fs = require('fs')
 const tmpDir = require('test-tmp')
 const Localdrive = require('localdrive')
 const pearBuild = require('pear-build')
-const host = platform + '-' + arch
 
+const host = platform + '-' + arch
 const fixture = path.join(__dirname, 'fixtures', 'updater')
 const npm = isWindows ? 'npm.cmd' : 'npm'
 const powershell = 'pwsh.exe'
@@ -40,7 +40,7 @@ function trustMsixCertificate(msixPath) {
       '-Command',
       `$sig=(Get-AuthenticodeSignature '${msixPath}').SignerCertificate; Export-Certificate -Cert $sig -FilePath "$env:TEMP\\msix-sign.cer" -Force | Out-Null; Import-Certificate -FilePath "$env:TEMP\\msix-sign.cer" -CertStoreLocation Cert:\\LocalMachine\\Root | Out-Null; Remove-Item "$env:TEMP\\msix-sign.cer" -Force;`
     ],
-    { stdio: 'inherit' }
+    { stdio: 'ignore' }
   )
 
   return helper.waitForExit(child)
