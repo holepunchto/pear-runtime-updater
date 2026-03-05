@@ -32,10 +32,6 @@
       "bare": "bare-path",
       "default": "path"
     },
-    "process": {
-      "bare": "bare-process",
-      "default": "process"
-    },
     "os": {
       "bare": "bare-os",
       "default": "os"
@@ -63,7 +59,6 @@
     "@hyperswarm/testnet": "^3.1.4",
     "bare-env": "^3.0.0",
     "bare-os": "^3.7.0",
-    "bare-process": "^4.2.2",
     "bare-subprocess": "^5.2.2",
     "brittle": "^3.19.1",
     "lunte": "^1.6.0",

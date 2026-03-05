@@ -2,7 +2,6 @@ const test = require('brittle')
 const { spawn, spawnSync } = require('child_process')
 const helper = require('./helper')
 const path = require('path')
-const { env } = require('process')
 const { isLinux, isMac, isWindows, platform, arch } = require('which-runtime')
 const fs = require('fs')
 const tmpDir = require('test-tmp')
@@ -158,11 +157,8 @@ test('should receive and apply update when update happens while app is running',
     runParams.execPath = appRunPath
   }
 
-  runParams.env = { ...env, ...(isLinux ? { APPIMAGE: runParams.execPath } : {}) }
-
   let run = spawn(runParams.execPath, runParams.args, {
     cwd: app,
-    env: runParams.env,
     stdio: 'pipe'
   })
   // On Windows, the process may exit with code 1 when terminated by the MSIX installer
@@ -232,7 +228,6 @@ test('should receive and apply update when update happens while app is running',
   }
   run = spawn(runParams.execPath, runParams.args, {
     cwd: app,
-    env: runParams.env,
     stdio: 'pipe'
   })
   exit = helper.waitForExit(run)
@@ -404,11 +399,8 @@ test('should receive and apply update when update happens while app is not runni
     runParams.execPath = appRunPath
   }
 
-  runParams.env = { ...env, ...(isLinux ? { APPIMAGE: runParams.execPath } : {}) }
-
   let run = spawn(runParams.execPath, runParams.args, {
     cwd: app,
-    env: runParams.env,
     stdio: 'pipe'
   })
   // On Windows, the process may exit with code 1 when terminated by the MSIX installer
@@ -437,7 +429,6 @@ test('should receive and apply update when update happens while app is not runni
   }
   run = spawn(runParams.execPath, runParams.args, {
     cwd: app,
-    env: runParams.env,
     stdio: 'pipe'
   })
   exit = helper.waitForExit(run)
