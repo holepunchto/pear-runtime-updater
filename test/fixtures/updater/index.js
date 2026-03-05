@@ -77,12 +77,10 @@ async function startUpdater() {
   updater.on('updated', async function () {
     console.log('updated')
 
-    setTimeout(async () => {
-      await updater.applyUpdate()
-      console.log('applied')
+    await updater.applyUpdate()
+    console.log('applied')
 
-      app.quit()
-    }, 3000)
+    app.quit()
   })
 
   if (version === '1.0.1') {
