@@ -97,7 +97,7 @@ module.exports = class PearRuntime extends ReadyResource {
       console.log('Updating to', nextApp)
       console.log(fs.existsSync(nextApp) ? 'File exists' : 'File does not exist')
       const result = spawnSync(
-        'pwsh.exe',
+        'powershell',
         ['-Command', 'Add-AppxPackage -Path "' + nextApp + '"'],
         { shell: true, stdio: 'inherit' }
       )
