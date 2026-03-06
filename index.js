@@ -25,6 +25,7 @@ module.exports = class PearRuntime extends ReadyResource {
     if (isWindows) this.name = path.basename(this.name, path.extname(this.name)) + '.msix'
     this.bootstrap = opts.bootstrap
     this.bundled = opts.bundled || !!this.app
+    this.restartWindowsOnUpdate = opts.restartWindowsOnUpdate
 
     if (this.updates) {
       const { drive: upgrade } = link.parse(opts.upgrade)
@@ -95,7 +96,7 @@ module.exports = class PearRuntime extends ReadyResource {
     if (isWindows) {
       const MSIXManager = require('msix-manager') // require must be here for platform compatibility
       const manager = new MSIXManager()
-      await manager.addPackage(nextApp)
+      await manager.addPackage(nextApp, { restartOnUpdate: this.restartWindowsOnUpdate })
     } else {
       await fsx.swap(nextApp, this.app)
     }
