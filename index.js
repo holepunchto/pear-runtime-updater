@@ -11,7 +11,7 @@ const hid = require('hypercore-id-encoding')
 const { platform, arch, isWindows } = require('which-runtime')
 const host = platform + '-' + arch
 
-module.exports = class PearRuntime extends ReadyResource {
+module.exports = class PearRuntimeUpdater extends ReadyResource {
   constructor(opts = {}) {
     super()
     this.updates = opts.updates !== false
