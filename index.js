@@ -104,7 +104,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
   }
 
   _updateBackground() {
-    this._update().catch((err) => console.error(err))
+    this._update().catch((err) => this.emit('error', err))
   }
 
   async _update() {
