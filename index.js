@@ -149,4 +149,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
   }
 }
 
-function report(err) { console.error(err) }
+function report(err) {
+  console.error(err)
+}
