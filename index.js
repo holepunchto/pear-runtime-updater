@@ -50,7 +50,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.updating = false
     this.updated = false
 
-    this.ready().catch(noop)
+    this.ready().catch(report)
   }
 
   async _open() {
@@ -104,7 +104,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
   }
 
   _updateBackground() {
-    this._update().catch(noop)
+    this._update().catch(report)
   }
 
   async _update() {
@@ -149,4 +149,4 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
   }
 }
 
-function noop() {}
+function report(err) { console.error(err) }
