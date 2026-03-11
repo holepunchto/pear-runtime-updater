@@ -28,6 +28,7 @@ const updater = new PearRuntimeUpdater({
   upgrade,
   version,
   app: getApp() // path to .app / .AppImage
+  name: 'name.ext' // <name>.app, <name>.AppImage, <name>.msix
 })
 
 await updater.ready()
@@ -56,6 +57,7 @@ process.on('beforeExit', () => updater.close())
 
 - `opts.dir` – (required) Directory to store data (e.g. app data dir).
 - `opts.upgrade` – (required) Pear upgrade link (e.g. from `package.json` `upgrade` field).
+- `opts.name` – (required) Application name with extension.
 - `opts.version` – (optional) Current app version; used to decide if an update should be stored.
 - `opts.app` – (optional) Path to the app bundle (for bundled apps; used with `applyUpdate()`).
 - `opts.bundled` – (optional) Whether the app is bundled. Defaults to `!!opts.app`.

@@ -87,25 +87,25 @@ test('should receive and apply update when update happens while app is running',
     await t.execution(helper.waitForExit(child), 'app built successfully')
   }
   if (isLinux) {
-    appBuildPath = path.join(app, 'out', 'make', `updater.AppImage`)
+    appBuildPath = path.join(app, 'out', 'make', `Updater.AppImage`)
     await fs.promises.rename(
-      path.join(app, 'out', 'make', `updater-1.0.0-${arch}.AppImage`),
+      path.join(app, 'out', 'make', `Updater-1.0.0-${arch}.AppImage`),
       appBuildPath
     )
   }
-  if (isMac) appBuildPath = path.join(app, 'out', `updater-${host}`, 'updater.app')
-  if (isWindows) appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater.msix')
+  if (isMac) appBuildPath = path.join(app, 'out', `Updater-${host}`, 'Updater.app')
+  if (isWindows) appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'Updater.msix')
 
   t.comment(isWindows ? 'trust and install app' : 'copy build to run dir')
   const runDir = await tmpDir(t)
   let appRunPath
   if (isLinux) {
-    appRunPath = path.join(runDir, 'updater.AppImage')
+    appRunPath = path.join(runDir, 'Updater.AppImage')
     await fs.promises.mkdir(path.dirname(appRunPath), { recursive: true })
     await fs.promises.cp(appBuildPath, appRunPath)
   }
   if (isMac) {
-    appRunPath = path.join(runDir, 'updater.app')
+    appRunPath = path.join(runDir, 'Updater.app')
     await new Localdrive(appBuildPath).mirror(new Localdrive(appRunPath)).done()
   }
   if (isWindows) {
@@ -114,9 +114,9 @@ test('should receive and apply update when update happens while app is running',
     const MSIXManager = require('msix-manager')
     const manager = new MSIXManager()
     await t.execution(manager.addPackage(appBuildPath), 'installed app successfully')
-    t.teardown(() => removeMsixPackage('updater'))
+    t.teardown(() => removeMsixPackage('Updater'))
 
-    appRunPath = getInstalledMsixExe('updater')
+    appRunPath = getInstalledMsixExe('Updater')
   }
 
   t.comment('run pear-build')
@@ -149,7 +149,7 @@ test('should receive and apply update when update happens while app is running',
 
   if (isMac) {
     runParams.args = [...baseArgs]
-    runParams.execPath = path.join(appRunPath, 'Contents', 'MacOS', 'updater')
+    runParams.execPath = path.join(appRunPath, 'Contents', 'MacOS', 'Updater')
   }
 
   if (isWindows) {
@@ -187,7 +187,7 @@ test('should receive and apply update when update happens while app is running',
   }
   if (isLinux) {
     await fs.promises.rename(
-      path.join(app, 'out', 'make', `updater-1.0.1-${arch}.AppImage`),
+      path.join(app, 'out', 'make', `Updater-1.0.1-${arch}.AppImage`),
       appBuildPath
     )
   }
@@ -223,7 +223,7 @@ test('should receive and apply update when update happens while app is running',
 
   t.comment('rerun app')
   if (isWindows) {
-    appRunPath = getInstalledMsixExe('updater')
+    appRunPath = getInstalledMsixExe('Updater')
     runParams.execPath = appRunPath
   }
   run = spawn(runParams.execPath, runParams.args, {
@@ -289,25 +289,25 @@ test('should receive and apply update when update happens while app is not runni
     await t.execution(helper.waitForExit(child), 'app built successfully')
   }
   if (isLinux) {
-    appBuildPath = path.join(app, 'out', 'make', `updater.AppImage`)
+    appBuildPath = path.join(app, 'out', 'make', `Updater.AppImage`)
     await fs.promises.rename(
-      path.join(app, 'out', 'make', `updater-1.0.0-${arch}.AppImage`),
+      path.join(app, 'out', 'make', `Updater-1.0.0-${arch}.AppImage`),
       appBuildPath
     )
   }
-  if (isMac) appBuildPath = path.join(app, 'out', `updater-${host}`, 'updater.app')
-  if (isWindows) appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'updater.msix')
+  if (isMac) appBuildPath = path.join(app, 'out', `Updater-${host}`, 'Updater.app')
+  if (isWindows) appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'Updater.msix')
 
   t.comment(isWindows ? 'trust and install app' : 'copy build to run dir')
   const runDir = await tmpDir(t)
   let appRunPath
   if (isLinux) {
-    appRunPath = path.join(runDir, 'updater.AppImage')
+    appRunPath = path.join(runDir, 'Updater.AppImage')
     await fs.promises.mkdir(path.dirname(appRunPath), { recursive: true })
     await fs.promises.cp(appBuildPath, appRunPath)
   }
   if (isMac) {
-    appRunPath = path.join(runDir, 'updater.app')
+    appRunPath = path.join(runDir, 'Updater.app')
     await new Localdrive(appBuildPath).mirror(new Localdrive(appRunPath)).done()
   }
   if (isWindows) {
@@ -316,9 +316,9 @@ test('should receive and apply update when update happens while app is not runni
     const MSIXManager = require('msix-manager')
     const manager = new MSIXManager()
     await t.execution(manager.addPackage(appBuildPath), 'installed app successfully')
-    t.teardown(() => removeMsixPackage('updater'))
+    t.teardown(() => removeMsixPackage('Updater'))
 
-    appRunPath = getInstalledMsixExe('updater')
+    appRunPath = getInstalledMsixExe('Updater')
   }
 
   t.comment('run pear-build')
@@ -360,7 +360,7 @@ test('should receive and apply update when update happens while app is not runni
   }
   if (isLinux) {
     await fs.promises.rename(
-      path.join(app, 'out', 'make', `updater-1.0.1-${arch}.AppImage`),
+      path.join(app, 'out', 'make', `Updater-1.0.1-${arch}.AppImage`),
       appBuildPath
     )
   }
@@ -391,7 +391,7 @@ test('should receive and apply update when update happens while app is not runni
 
   if (isMac) {
     runParams.args = [...baseArgs]
-    runParams.execPath = path.join(appRunPath, 'Contents', 'MacOS', 'updater')
+    runParams.execPath = path.join(appRunPath, 'Contents', 'MacOS', 'Updater')
   }
 
   if (isWindows) {
@@ -424,7 +424,7 @@ test('should receive and apply update when update happens while app is not runni
 
   t.comment('rerun app')
   if (isWindows) {
-    appRunPath = getInstalledMsixExe('updater')
+    appRunPath = getInstalledMsixExe('Updater')
     runParams.execPath = appRunPath
   }
   run = spawn(runParams.execPath, runParams.args, {
