@@ -84,7 +84,9 @@ async function startUpdater() {
 
     await updater.applyUpdate()
 
-    app.quit()
+    setTimeout(() => {
+      app.quit()
+    }, 1000)
   })
 
   if (version === '1.0.1') {
