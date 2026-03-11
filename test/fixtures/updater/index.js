@@ -68,7 +68,7 @@ async function startUpdater() {
     updates: true,
     version,
     upgrade,
-    name: isLinux ? 'updater.AppImage' : isMac ? 'updater.app' : 'updater.msix'
+    name: isLinux ? 'Updater.AppImage' : isMac ? 'Updater.app' : 'Updater.msix'
   })
   await updater.ready()
   app.on('quit', () => {

@@ -28,7 +28,7 @@ const updater = new PearRuntimeUpdater({
   upgrade,
   version,
   app: getApp() // path to .app / .AppImage
-  name: 'App.extension' // application name with extension, it must match the name of the staged update
+  name: 'name.ext' // <name>.app, <name>.AppImage, <name>.msix
 })
 
 await updater.ready()
