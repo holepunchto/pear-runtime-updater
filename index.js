@@ -17,12 +17,12 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.updates = opts.updates !== false
     if (!opts.dir) throw new Error('dir required')
     if (!opts.upgrade) throw new Error('upgrade link required')
+    if (!opts.name) throw new Error('name required')
 
     this.dir = opts.dir
     this.version = opts.version || 0
     this.app = opts.app
-    this.name = opts.name ?? (this.app && path.basename(this.app))
-    if (isWindows) this.name = path.basename(this.name, path.extname(this.name)) + '.msix'
+    this.name = opts.name
     this.bootstrap = opts.bootstrap
     this.bundled = opts.bundled || !!this.app
     this.win32RestartAfterUpdate = opts.win32 && opts.win32.restart
