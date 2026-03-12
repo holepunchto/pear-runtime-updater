@@ -58,10 +58,10 @@ module.exports = {
     }
   },
 
-  async waitForExit(child, exitCodes = [0]) {
+  async waitForExit(child) {
     await new Promise((resolve, reject) => {
       child.on('exit', (code) => {
-        if (exitCodes.includes(code)) resolve()
+        if (code === 0) resolve()
         else reject(new Error(`Failed with exit code ${code}`))
       })
       child.on('error', reject)
