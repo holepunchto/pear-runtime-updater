@@ -162,7 +162,7 @@ test('should receive and apply update when update happens while app is running',
     stdio: 'pipe'
   })
   // On Windows, the process may exit with code 1 when terminated by the MSIX installer
-  let exit = helper.waitForExit(run, isWindows ? [0, 3221225477] : [0])
+  let exit = helper.waitForExit(run, isWindows ? [0, 1] : [0])
 
   t.comment('update app version')
   {
@@ -404,7 +404,7 @@ test('should receive and apply update when update happens while app is not runni
     stdio: 'pipe'
   })
   // On Windows, the process may exit with code 1 when terminated by the MSIX installer
-  let exit = helper.waitForExit(run, isWindows ? [0, 3221225477] : [0])
+  let exit = helper.waitForExit(run, isWindows ? [0, 1] : [0])
   const updated = new Promise((resolve) =>
     run.stdout.on('data', (data) => {
       if (data.toString().includes('updated')) resolve()
