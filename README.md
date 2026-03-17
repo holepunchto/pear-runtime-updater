@@ -21,6 +21,7 @@ const PearRuntimeUpdater = require('pear-runtime-updater')
 const path = require('path')
 const Corestore = require('corestore')
 const Hyperswarm = require('hyperswarm')
+const goodbye = require('graceful-goodbye')
 const { version, upgrade } = require('./package.json')
 
 const store = new Corestore('./my-app/corestore')
@@ -57,7 +58,7 @@ swarm.join(updater.drive.core.discoveryKey, {
 })
 
 // handle teardown
-process.on('beforeExit', async () => {
+goodbye(async () => {
   await swarm.destroy()
   await updater.close()
   await store.close()
