@@ -14,6 +14,8 @@ This boilerplate is MVP and Experimental.
 
 ## Usage
 
+Example in node.js:
+
 ```js
 const PearRuntimeUpdater = require('pear-runtime-updater')
 const path = require('path')
@@ -75,7 +77,7 @@ process.on('beforeExit', async () => {
 - `opts.dir` – (required) Directory to store data (e.g. app data dir).
 - `opts.upgrade` – (required) Pear upgrade link (e.g. from `package.json` `upgrade` field).
 - `opts.name` – (required) Application name with extension.
-- `opts.store` - (required) Pass a corestore to be used for updates.
+- `opts.store` - (required) Pass a [Corestore](https://github.com/holepunchto/corestore) to be used for updates.
 - `opts.version` – (optional) Current app version; used to decide if an update should be stored.
 - `opts.app` – (optional) Path to the app bundle (for bundled apps; used with `applyUpdate()`).
 - `opts.bundled` – (optional) Whether the app is bundled. Defaults to `!!opts.app`.
