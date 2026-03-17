@@ -70,7 +70,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
     await this.drive.close()
     if (this.checkout !== null) await this.checkout.close()
-    await this.store.close()
   }
 
   async applyUpdate() {
