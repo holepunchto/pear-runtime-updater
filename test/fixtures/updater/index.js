@@ -75,9 +75,9 @@ async function startUpdater() {
     store
   })
 
-  const keyPair = await this.store.createKeyPair('pear-runtime')
+  const keyPair = await store.createKeyPair('pear-runtime')
   const swarm = new Hyperswarm({ keyPair })
-  swarm.on('connection', (connection) => this.store.replicate(connection))
+  swarm.on('connection', (connection) => store.replicate(connection))
   swarm.join(updater.drive.core.discoveryKey, {
     client: true,
     server: false
