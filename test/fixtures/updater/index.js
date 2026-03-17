@@ -74,7 +74,6 @@ async function startUpdater() {
     name: isLinux ? 'Updater.AppImage' : isMac ? 'Updater.app' : 'Updater.msix',
     store
   })
-  await updater.ready()
 
   const keyPair = await this.store.createKeyPair('pear-runtime')
   const swarm = new Hyperswarm({ keyPair })
@@ -83,6 +82,8 @@ async function startUpdater() {
     client: true,
     server: false
   })
+
+  await updater.ready()
 
   app.on('quit', async () => {
     await swarm.destroy()
