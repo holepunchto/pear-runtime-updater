@@ -18,8 +18,10 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     if (!opts.dir) throw new Error('dir required')
     if (!opts.upgrade) throw new Error('upgrade link required')
     if (!opts.name) throw new Error('name required')
+    if (!opts.store) throw new Error('store required')
 
     this.dir = opts.dir
+    this.store = opts.store
     this.version = opts.version || 0
     this.app = opts.app
     this.name = opts.name
@@ -33,7 +35,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
       this.length = upgrade.length || 0
       this.fork = upgrade.fork || 0
       this.link = link.serialize({ drive: { fork: this.fork, length: this.length, key: this.key } })
-      this.store = opts.store ?? new Corestore(path.join(this.dir, 'pear-runtime/corestore'))
       this.drive = new Hyperdrive(this.store, this.key)
     } else {
       this.key = null
