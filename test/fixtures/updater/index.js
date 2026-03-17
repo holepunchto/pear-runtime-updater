@@ -75,6 +75,8 @@ async function startUpdater() {
     store
   })
 
+  await updater.ready()
+
   const keyPair = await store.createKeyPair('pear-runtime')
   const swarm = new Hyperswarm({ keyPair })
   swarm.on('connection', (connection) => store.replicate(connection))
@@ -82,8 +84,6 @@ async function startUpdater() {
     client: true,
     server: false
   })
-
-  await updater.ready()
 
   app.on('quit', async () => {
     await swarm.destroy()
