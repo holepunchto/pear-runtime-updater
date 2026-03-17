@@ -14,6 +14,8 @@
     "electron": "^40.6.1"
   },
   "dependencies": {
+    "corestore": "^7.9.1",
+    "hyperswarm": "^4.17.0",
     "pear-runtime-updater": "file:../../.."
   }
 }

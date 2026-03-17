@@ -1,6 +1,8 @@
 const { app, BrowserWindow } = require('electron')
 const { isLinux, isWindows, isMac } = require('which-runtime')
 const path = require('path')
+const Corestore = require('corestore')
+const Hyperswarm = require('hyperswarm')
 const Updater = require('pear-runtime-updater')
 const pkg = require('./package.json')
 const { version, upgrade } = pkg
@@ -60,19 +62,32 @@ function getAppPath() {
 async function startUpdater() {
   console.log(`running ${version} ${upgrade}`)
 
+  const store = new Corestore(path.join(dir, 'pear-runtime/corestore'))
   const appPath = getAppPath()
   const updater = new Updater({
     dir,
     app: appPath,
-    bootstrap,
     updates: true,
     version,
     upgrade,
-    name: isLinux ? 'Updater.AppImage' : isMac ? 'Updater.app' : 'Updater.msix'
+    name: isLinux ? 'Updater.AppImage' : isMac ? 'Updater.app' : 'Updater.msix',
+    store
   })
+
   await updater.ready()
-  app.on('quit', () => {
-    updater.close()
+
+  const keyPair = await store.createKeyPair('pear-runtime')
+  const swarm = new Hyperswarm({ keyPair, bootstrap })
+  swarm.on('connection', (connection) => store.replicate(connection))
+  swarm.join(updater.drive.core.discoveryKey, {
+    client: true,
+    server: false
+  })
+
+  app.on('quit', async () => {
+    await swarm.destroy()
+    await updater.close()
+    await store.close()
   })
 
   updater.on('updating', function () {

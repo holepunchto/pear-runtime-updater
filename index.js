@@ -1,7 +1,5 @@
-const Hyperswarm = require('hyperswarm')
 const Hyperdrive = require('hyperdrive')
 const Localdrive = require('localdrive')
-const Corestore = require('corestore')
 const path = require('path')
 const fs = require('fs')
 const fsx = require('fs-native-extensions')
@@ -18,12 +16,13 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     if (!opts.dir) throw new Error('dir required')
     if (!opts.upgrade) throw new Error('upgrade link required')
     if (!opts.name) throw new Error('name required')
+    if (!opts.store) throw new Error('store required')
 
     this.dir = opts.dir
+    this.store = opts.store
     this.version = opts.version || 0
     this.app = opts.app
     this.name = opts.name
-    this.bootstrap = opts.bootstrap
     this.bundled = opts.bundled || !!this.app
     this.win32RestartAfterUpdate = opts.win32 && opts.win32.restart
 
@@ -33,7 +32,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
       this.length = upgrade.length || 0
       this.fork = upgrade.fork || 0
       this.link = link.serialize({ drive: { fork: this.fork, length: this.length, key: this.key } })
-      this.store = new Corestore(path.join(this.dir, 'pear-runtime/corestore'))
       this.drive = new Hyperdrive(this.store, this.key)
     } else {
       this.key = null
@@ -44,7 +42,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
       this.drive = null
     }
 
-    this.swarm = null
     this.next = null
     this.checkout = null
     this.updating = false
@@ -63,17 +60,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
         force: true
       })
 
-      if (!this.swarm) {
-        const keyPair = await this.store.createKeyPair('pear-container')
-        this.swarm = new Hyperswarm({ keyPair, bootstrap: this.bootstrap })
-      }
-
-      this.swarm.on('connection', (connection) => this.store.replicate(connection))
-      this.swarm.join(this.drive.core.discoveryKey, {
-        client: true,
-        server: false
-      })
-
       this._updateBackground()
       this.drive.core.on('append', () => this._updateBackground())
     }
@@ -84,8 +70,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
     await this.drive.close()
     if (this.checkout !== null) await this.checkout.close()
-    await this.store.close()
-    if (this.swarm) await this.swarm.destroy()
   }
 
   async applyUpdate() {

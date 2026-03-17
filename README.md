@@ -14,10 +14,17 @@ This boilerplate is MVP and Experimental.
 
 ## Usage
 
+Example in node.js:
+
 ```js
 const PearRuntimeUpdater = require('pear-runtime-updater')
 const path = require('path')
+const Corestore = require('corestore')
+const Hyperswarm = require('hyperswarm')
+const goodbye = require('graceful-goodbye')
 const { version, upgrade } = require('./package.json')
+
+const store = new Corestore('./my-app/corestore')
 
 function getApp() {
   return path.join(process.resourcesPath, '../..')
@@ -27,8 +34,9 @@ const updater = new PearRuntimeUpdater({
   dir: path.join(app.getPath('userData')),
   upgrade,
   version,
-  app: getApp() // path to .app / .AppImage
-  name: 'name.ext' // <name>.app, <name>.AppImage, <name>.msix
+  app: getApp(), // path to .app / .AppImage
+  name: 'name.ext', // <name>.app, <name>.AppImage, <name>.msix
+  store
 })
 
 await updater.ready()
@@ -41,13 +49,26 @@ updater.on('updated', async () => {
   app.exit(0)
 })
 
-process.on('beforeExit', () => updater.close())
+const keyPair = await store.createKeyPair('pear-runtime')
+const swarm = new Hyperswarm({ keyPair })
+swarm.on('connection', (connection) => store.replicate(connection))
+swarm.join(updater.drive.core.discoveryKey, {
+  client: true,
+  server: false
+})
+
+// handle teardown
+goodbye(async () => {
+  await swarm.destroy()
+  await updater.close()
+  await store.close()
+})
 ```
 
 ## Features
 
 - Peer-to-peer over-the-air (P2P OTA) update listening
-- Replicates update content via [Hyperdrive](https://github.com/holepunchto/hyperdrive) / [Hyperswarm](https://github.com/holepunchto/hyperswarm)
+- Appends update content via [Hyperdrive](https://github.com/holepunchto/hyperdrive)
 - Emits when an update is in progress, update diffs and when it’s ready
 - `applyUpdate()` to atomic swap the new build (bundled apps; macOS/Linux)
 
@@ -58,6 +79,7 @@ process.on('beforeExit', () => updater.close())
 - `opts.dir` – (required) Directory to store data (e.g. app data dir).
 - `opts.upgrade` – (required) Pear upgrade link (e.g. from `package.json` `upgrade` field).
 - `opts.name` – (required) Application name with extension.
+- `opts.store` - (required) Pass a [Corestore](https://github.com/holepunchto/corestore) to be used for updates.
 - `opts.version` – (optional) Current app version; used to decide if an update should be stored.
 - `opts.app` – (optional) Path to the app bundle (for bundled apps; used with `applyUpdate()`).
 - `opts.bundled` – (optional) Whether the app is bundled. Defaults to `!!opts.app`.
