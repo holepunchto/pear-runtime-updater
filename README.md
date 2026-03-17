@@ -56,6 +56,7 @@ swarm.join(updater.drive.core.discoveryKey, {
   server: false
 })
 
+// handle teardown
 process.on('beforeExit', async () => {
   await swarm.destroy()
   await updater.close()
