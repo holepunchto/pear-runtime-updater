@@ -1,7 +1,5 @@
-const Hyperswarm = require('hyperswarm')
 const Hyperdrive = require('hyperdrive')
 const Localdrive = require('localdrive')
-const Corestore = require('corestore')
 const path = require('path')
 const fs = require('fs')
 const fsx = require('fs-native-extensions')
