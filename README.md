@@ -54,7 +54,11 @@ swarm.join(updater.drive.core.discoveryKey, {
   server: false
 })
 
-process.on('beforeExit', () => updater.close())
+process.on('beforeExit', async () => {
+  await swarm.destroy()
+  await updater.close()
+  await store.close()
+})
 ```
 
 ## Features
