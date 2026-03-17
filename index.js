@@ -23,7 +23,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.version = opts.version || 0
     this.app = opts.app
     this.name = opts.name
-    this.bootstrap = opts.bootstrap
     this.bundled = opts.bundled || !!this.app
     this.win32RestartAfterUpdate = opts.win32 && opts.win32.restart
 
