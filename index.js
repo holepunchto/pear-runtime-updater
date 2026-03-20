@@ -26,21 +26,12 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.bundled = opts.bundled || !!this.app
     this.win32RestartAfterUpdate = opts.win32 && opts.win32.restart
 
-    if (this.updates) {
-      const { drive: upgrade } = link.parse(opts.upgrade)
-      this.key = hid.decode(upgrade.key)
-      this.length = upgrade.length || 0
-      this.fork = upgrade.fork || 0
-      this.link = link.serialize({ drive: { fork: this.fork, length: this.length, key: this.key } })
-      this.drive = new Hyperdrive(this.store, this.key)
-    } else {
-      this.key = null
-      this.length = null
-      this.fork = null
-      this.link = null
-      this.store = null
-      this.drive = null
-    }
+    const { drive: upgrade } = link.parse(opts.upgrade)
+    this.key = hid.decode(upgrade.key)
+    this.length = upgrade.length || 0
+    this.fork = upgrade.fork || 0
+    this.link = link.serialize({ drive: { fork: this.fork, length: this.length, key: this.key } })
+    this.drive = new Hyperdrive(this.store, this.key)
 
     this.next = null
     this.checkout = null
@@ -51,8 +42,8 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
   }
 
   async _open() {
-    if (!this.updates) return
     await this.drive.ready()
+    if (!this.updates) return
 
     if (this.bundled) {
       await fs.promises.rm(path.join(this.dir, 'pear-runtime/next'), {
@@ -66,9 +57,9 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
   }
 
   async _close() {
-    if (!this.updates) return
-
     await this.drive.close()
+
+    if (!this.updates) return
     if (this.checkout !== null) await this.checkout.close()
   }
 
