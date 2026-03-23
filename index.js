@@ -24,7 +24,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.app = opts.app
     this.name = opts.name
     this.bundled = opts.bundled || !!this.app
-    this.win32RestartAfterUpdate = opts.win32 && opts.win32.restart
 
     const { drive: upgrade } = link.parse(opts.upgrade)
     this.key = hid.decode(upgrade.key)
@@ -71,7 +70,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     if (isWindows) {
       const MSIXManager = require('msix-manager') // require must be here for platform compatibility
       const manager = new MSIXManager()
-      await manager.addPackage(nextApp, { restartOnUpdate: this.win32RestartAfterUpdate })
+      await manager.addPackage(nextApp)
     } else {
       await fsx.swap(nextApp, this.app)
     }
