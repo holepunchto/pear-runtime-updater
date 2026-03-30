@@ -84,12 +84,6 @@ async function startUpdater() {
     server: false
   })
 
-  app.on('quit', async () => {
-    await swarm.destroy()
-    await updater.close()
-    await store.close()
-  })
-
   updater.on('updating', function () {
     console.log('updating')
   })
@@ -99,10 +93,20 @@ async function startUpdater() {
 
     await updater.applyUpdate()
 
+    await cleanup()
     app.quit()
   })
 
-  if (version === '1.0.1') {
+  const quitVersion = positionalArgs?.[2]
+  if (quitVersion && version === quitVersion) {
+    await cleanup()
     app.quit()
+    return
+  }
+
+  async function cleanup() {
+    await swarm.destroy()
+    await updater.close()
+    await store.close()
   }
 }

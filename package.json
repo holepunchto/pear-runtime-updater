@@ -20,8 +20,8 @@
   "scripts": {
     "format": "prettier . --write",
     "test": "npm run test:node && npm run test:bare",
-    "test:node": "brittle-node test/updates.test.js",
-    "test:bare": "brittle-bare test/updates.test.js",
+    "test:node": "brittle-node test/index.test.js",
+    "test:bare": "brittle-bare test/index.test.js",
     "lint": "prettier --check . && lunte"
   },
   "imports": {
@@ -45,11 +45,12 @@
   "dependencies": {
     "bare-fs": "^4.5.3",
     "bare-path": "^3.0.0",
+    "bare-semver": "^1.0.2",
     "fs-native-extensions": "^1.4.5",
     "hypercore-id-encoding": "^1.3.0",
     "hyperdrive": "^13.2.1",
     "localdrive": "^2.2.0",
-    "msix-manager": "^0.2.1",
+    "msix-manager": "^0.2.4",
     "pear-link": "^4.2.1",
     "ready-resource": "^1.2.0",
     "which-runtime": "^1.3.2"
