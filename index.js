@@ -36,11 +36,14 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.next = null
     this.checkout = null
     this.prefetched = false
-    this.syncing = false
-    this.syncPending = false
+    this.updating = false
     this.updated = false
 
     this.ready().catch(noop)
+  }
+
+  get prefix() {
+    return `/by-arch/${host}/app/${this.name}`
   }
 
   async _open() {
@@ -53,8 +56,8 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
         force: true
       })
 
-      this._syncBackground()
-      this.drive.core.on('append', () => this._syncBackground())
+      this._updateBackground()
+      this.drive.core.on('append', () => this._updateBackground())
     }
   }
 
@@ -80,77 +83,19 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     await fs.promises.rm(this.next, { recursive: true, force: true })
   }
 
-  _syncBackground() {
-    if (!this.updates) return
-    if (this.syncing) {
-      this.syncPending = true
-      return
-    }
-
-    this.syncing = true
-    this._sync()
-      .catch((err) => this.emit('error', err))
-      .finally(() => {
-        this.syncing = false
-        if (this.syncPending) {
-          this.syncPending = false
-          this._syncBackground()
-        }
-      })
-  }
-
-  async _sync() {
-    await this._prefetchCurrent()
-    await this._update()
-  }
-
-  _prefix() {
-    return `/by-arch/${host}/app/${this.name}`
-  }
-
-  async _prefetchCurrent() {
-    if (this.prefetched || !this.bundled) return
-    if (this.drive.core.length === 0) return
-
-    const length = await this._findCurrentVersionLength()
-    if (!length) return
-
-    const prefix = this._prefix()
-    const co = this.drive.checkout(length)
-
-    try {
-      if (!(await co.has(prefix))) {
-        await co.download(prefix).done()
-      }
-    } finally {
-      await co.close()
-    }
-
-    this.prefetched = true
-  }
-
-  async _findCurrentVersionLength() {
-    const prefix = this._prefix()
-
-    for (let length = this.drive.core.length; length > 0; length--) {
-      const co = this.drive.checkout(length)
-
-      try {
-        const manifest = await co.get('/package.json')
-        if (!manifest) continue
-        if (JSON.parse(manifest).version !== this.version) continue
-        if (!(await hasEntries(co, prefix))) continue
-        return length
-      } finally {
-        await co.close()
-      }
-    }
-
-    return 0
+  _updateBackground() {
+    this._update().catch((err) => this.emit('error', err))
   }
 
   async _update() {
-    if (!this.updates) return
+    if (this.updating || !this.updates) return
+    this.updating = true
+
+    await this.drive.update()
+
+    if (this.bundled && !this.prefetched) {
+      await this._prefetchLatest()
+    }
 
     const length = this.drive.core.length
     const id = length + '.' + this.drive.core.fork
@@ -160,7 +105,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.checkout = co
 
     const manifest = await co.get('/package.json')
-
     const current = semver.Version.parse(this.version)
     const remote = manifest ? semver.Version.parse(JSON.parse(manifest).version) : null
 
@@ -175,8 +119,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     const local = new Localdrive(next)
 
     this.emit('updating')
-    const prefix = this._prefix()
-    for await (const data of co.mirror(local, { prefix })) {
+    for await (const data of co.mirror(local, { prefix: this.prefix })) {
       this.emit('updating-delta', data)
     }
 
@@ -187,19 +130,29 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.length = length
     this.next = next
 
+    this.updating = false
     this.updated = true
     this.emit('updated')
 
-    if (this.drive.core.length > length) this._syncBackground()
-  }
-}
-
-async function hasEntries(drive, prefix) {
-  for await (const entry of drive.list(prefix)) {
-    return !!entry
+    if (this.drive.core.length > length) this._updateBackground()
   }
 
-  return false
+  async _prefetchLatest() {
+    const length = this.drive.core.length
+    if (!length) return
+
+    const co = this.drive.checkout(length)
+
+    try {
+      if (!(await co.has(this.prefix))) {
+        await co.download(this.prefix).done()
+      }
+    } finally {
+      await co.close()
+    }
+
+    this.prefetched = true
+  }
 }
 
 function noop() {}

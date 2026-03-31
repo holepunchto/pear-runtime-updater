@@ -48,7 +48,7 @@ function trustMsixCertificate(msixPath) {
   return helper.waitForExit(child)
 }
 
-test('should prefetch the current version on first run', async (t) => {
+test('should prefetch the latest version on first run', async (t) => {
   t.timeout(120_000)
 
   t.comment('create testnet')
@@ -127,7 +127,7 @@ test('should prefetch the current version on first run', async (t) => {
         await co.close()
       }
     }),
-    'prefetched current version successfully'
+    'prefetched latest version successfully'
   )
 })
 
