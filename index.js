@@ -35,7 +35,9 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
     this.next = null
     this.checkout = null
-    this.updating = false
+    this.prefetched = false
+    this.syncing = false
+    this.syncPending = false
     this.updated = false
 
     this.ready().catch(noop)
@@ -51,8 +53,8 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
         force: true
       })
 
-      this._updateBackground()
-      this.drive.core.on('append', () => this._updateBackground())
+      this._syncBackground()
+      this.drive.core.on('append', () => this._syncBackground())
     }
   }
 
@@ -78,13 +80,77 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     await fs.promises.rm(this.next, { recursive: true, force: true })
   }
 
-  _updateBackground() {
-    this._update().catch((err) => this.emit('error', err))
+  _syncBackground() {
+    if (!this.updates) return
+    if (this.syncing) {
+      this.syncPending = true
+      return
+    }
+
+    this.syncing = true
+    this._sync()
+      .catch((err) => this.emit('error', err))
+      .finally(() => {
+        this.syncing = false
+        if (this.syncPending) {
+          this.syncPending = false
+          this._syncBackground()
+        }
+      })
+  }
+
+  async _sync() {
+    await this._prefetchCurrent()
+    await this._update()
+  }
+
+  _prefix() {
+    return `/by-arch/${host}/app/${this.name}`
+  }
+
+  async _prefetchCurrent() {
+    if (this.prefetched || !this.bundled) return
+    if (this.drive.core.length === 0) return
+
+    const length = await this._findCurrentVersionLength()
+    if (!length) return
+
+    const prefix = this._prefix()
+    const co = this.drive.checkout(length)
+
+    try {
+      if (!(await co.has(prefix))) {
+        await co.download(prefix).done()
+      }
+    } finally {
+      await co.close()
+    }
+
+    this.prefetched = true
+  }
+
+  async _findCurrentVersionLength() {
+    const prefix = this._prefix()
+
+    for (let length = this.drive.core.length; length > 0; length--) {
+      const co = this.drive.checkout(length)
+
+      try {
+        const manifest = await co.get('/package.json')
+        if (!manifest) continue
+        if (JSON.parse(manifest).version !== this.version) continue
+        if (!(await hasEntries(co, prefix))) continue
+        return length
+      } finally {
+        await co.close()
+      }
+    }
+
+    return 0
   }
 
   async _update() {
-    if (this.updating || !this.updates) return
-    this.updating = true
+    if (!this.updates) return
 
     const length = this.drive.core.length
     const id = length + '.' + this.drive.core.fork
@@ -109,7 +175,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     const local = new Localdrive(next)
 
     this.emit('updating')
-    const prefix = `/by-arch/${host}/app/${this.name}`
+    const prefix = this._prefix()
     for await (const data of co.mirror(local, { prefix })) {
       this.emit('updating-delta', data)
     }
@@ -121,12 +187,19 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.length = length
     this.next = next
 
-    this.updating = false
     this.updated = true
     this.emit('updated')
 
-    if (this.drive.core.length > length) this._updateBackground()
+    if (this.drive.core.length > length) this._syncBackground()
   }
+}
+
+async function hasEntries(drive, prefix) {
+  for await (const entry of drive.list(prefix)) {
+    return !!entry
+  }
+
+  return false
 }
 
 function noop() {}

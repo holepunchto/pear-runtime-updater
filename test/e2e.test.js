@@ -1,11 +1,14 @@
 const test = require('brittle')
 const { spawn, spawnSync } = require('child_process')
 const helper = require('./helper')
+const Updater = require('..')
 const path = require('path')
 const { isLinux, isMac, isWindows, platform, arch } = require('which-runtime')
 const fs = require('fs')
 const tmpDir = require('test-tmp')
 const Localdrive = require('localdrive')
+const Corestore = require('corestore')
+const Hyperswarm = require('hyperswarm')
 const pearBuild = require('pear-build')
 
 const host = platform + '-' + arch
@@ -44,6 +47,89 @@ function trustMsixCertificate(msixPath) {
 
   return helper.waitForExit(child)
 }
+
+test('should prefetch the current version on first run', async (t) => {
+  t.timeout(120_000)
+
+  t.comment('create testnet')
+  const testnet = await helper.createTestnet()
+  t.teardown(() => testnet.destroy())
+
+  const stagerDir = await tmpDir(t)
+
+  t.comment('prepare stager')
+  const stager = new helper.Stager({
+    dir: stagerDir,
+    bootstrap: testnet.nodes.map((e) => `${e.host}:${e.port}`)
+  })
+  await stager.ready()
+  t.teardown(() => stager.close())
+
+  t.comment('prepare staged app')
+  const staged = await tmpDir(t)
+  const appName = `updater-${host}`
+  const prefix = `/by-arch/${host}/app/${appName}`
+  const prefixDir = path.join(staged, 'by-arch', host, 'app', appName)
+
+  await fs.promises.mkdir(prefixDir, { recursive: true })
+  await fs.promises.writeFile(
+    path.join(staged, 'package.json'),
+    JSON.stringify({ version: '1.0.0' }, null, 2),
+    'utf8'
+  )
+  await fs.promises.writeFile(path.join(prefixDir, 'bundle.txt'), 'first run payload', 'utf8')
+
+  t.comment('stage and seed')
+  await t.execution(stager.stage(staged), 'staged successfully')
+  await t.execution(stager.seed(), 'seeded successfully')
+
+  t.comment('start updater')
+  const dir = await tmpDir(t)
+  const store = new Corestore(path.join(dir, 'pear-runtime/corestore'))
+  t.teardown(() => store.close())
+
+  const updater = new Updater({
+    bundled: true,
+    dir,
+    name: appName,
+    store,
+    upgrade: stager.link,
+    version: '1.0.0'
+  })
+  await updater.ready()
+  t.teardown(() => updater.close())
+
+  const keyPair = await store.createKeyPair('pear-runtime')
+  const swarm = new Hyperswarm({
+    bootstrap: testnet.nodes.map((e) => `${e.host}:${e.port}`),
+    keyPair
+  })
+  swarm.on('connection', (connection) => store.replicate(connection))
+  t.teardown(() => swarm.destroy())
+
+  const discovery = swarm.join(updater.drive.core.discoveryKey, {
+    client: true,
+    server: false
+  })
+  await discovery.flushed()
+  t.teardown(() => discovery.destroy())
+
+  t.comment('wait for prefetched blobs')
+  await t.execution(
+    waitFor(async () => {
+      if (updater.drive.core.length < stager.drive.version) return false
+
+      const co = updater.drive.checkout(stager.drive.version)
+
+      try {
+        return await co.has(prefix)
+      } finally {
+        await co.close()
+      }
+    }),
+    'prefetched current version successfully'
+  )
+})
 
 test('should receive and apply update when update happens while app is running', async (t) => {
   t.timeout(300_000)
