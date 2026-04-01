@@ -8,6 +8,7 @@ const fs = require('fs')
 const tmpDir = require('test-tmp')
 const Localdrive = require('localdrive')
 const Corestore = require('corestore')
+const Hyperdrive = require('hyperdrive')
 const Hyperswarm = require('hyperswarm')
 const pearBuild = require('pear-build')
 
@@ -116,7 +117,7 @@ test('should prefetch the latest version on first run', async (t) => {
 
   t.comment('wait for prefetched blobs')
   await t.execution(
-    waitFor(async () => {
+    helper.waitFor(async () => {
       if (updater.drive.core.length < stager.drive.version) return false
 
       const co = updater.drive.checkout(stager.drive.version)
@@ -128,6 +129,117 @@ test('should prefetch the latest version on first run', async (t) => {
       }
     }),
     'prefetched latest version successfully'
+  )
+})
+
+test('should prefetch the latest version after partial metadata sync', async (t) => {
+  t.timeout(120_000)
+
+  t.comment('create testnet')
+  const testnet = await helper.createTestnet()
+  t.teardown(() => testnet.destroy())
+
+  const stagerDir = await tmpDir(t)
+
+  t.comment('prepare stager')
+  const stager = new helper.Stager({
+    dir: stagerDir,
+    bootstrap: testnet.nodes.map((e) => `${e.host}:${e.port}`)
+  })
+  await stager.ready()
+  t.teardown(() => stager.close())
+
+  t.comment('prepare staged app')
+  const staged = await tmpDir(t)
+  const appName = `updater-${host}`
+  const prefix = `/by-arch/${host}/app/${appName}`
+  const prefixDir = path.join(staged, 'by-arch', host, 'app', appName)
+
+  await fs.promises.mkdir(prefixDir, { recursive: true })
+  await fs.promises.writeFile(
+    path.join(staged, 'package.json'),
+    JSON.stringify({ version: '1.0.0' }, null, 2),
+    'utf8'
+  )
+  await fs.promises.writeFile(path.join(prefixDir, 'bundle.txt'), 'partial sync payload', 'utf8')
+
+  t.comment('stage and seed')
+  await t.execution(stager.stage(staged), 'staged successfully')
+  await t.execution(stager.seed(), 'seeded successfully')
+
+  t.comment('partially sync metadata')
+  const dir = await tmpDir(t)
+  {
+    const store = new Corestore(path.join(dir, 'pear-runtime/corestore'))
+    const drive = new Hyperdrive(store, stager.drive.key)
+    await drive.ready()
+
+    const keyPair = await store.createKeyPair('pear-runtime-partial')
+    const swarm = new Hyperswarm({
+      bootstrap: testnet.nodes.map((e) => `${e.host}:${e.port}`),
+      keyPair
+    })
+    swarm.on('connection', (connection) => store.replicate(connection))
+
+    const discovery = swarm.join(drive.core.discoveryKey, {
+      client: true,
+      server: false
+    })
+    await discovery.flushed()
+
+    await drive.update()
+    await drive.db.core.download({ start: 0, length: 1 }).done()
+
+    await discovery.destroy()
+    await swarm.destroy()
+    await drive.close()
+    await store.close()
+  }
+
+  t.comment('start updater')
+  const store = new Corestore(path.join(dir, 'pear-runtime/corestore'))
+  t.teardown(() => store.close())
+
+  const updater = new Updater({
+    bundled: true,
+    dir,
+    name: appName,
+    store,
+    upgrade: stager.link,
+    version: '1.0.0'
+  })
+  await updater.ready()
+  t.teardown(() => updater.close())
+
+  const keyPair = await store.createKeyPair('pear-runtime')
+  const swarm = new Hyperswarm({
+    bootstrap: testnet.nodes.map((e) => `${e.host}:${e.port}`),
+    keyPair
+  })
+  swarm.on('connection', (connection) => store.replicate(connection))
+  t.teardown(() => swarm.destroy())
+
+  const discovery = swarm.join(updater.drive.core.discoveryKey, {
+    client: true,
+    server: false
+  })
+  await discovery.flushed()
+  t.teardown(() => discovery.destroy())
+
+  t.comment('wait for prefetched blobs')
+  await t.execution(
+    helper.waitFor(async () => {
+      if (updater.drive.core.length < stager.drive.version) return false
+
+      const co = updater.drive.checkout(stager.drive.version)
+
+      try {
+        return await co.has(prefix)
+      } finally {
+        await co.close()
+      }
+    }),
+    'prefetched latest version after partial sync successfully'
   )
 })
 
