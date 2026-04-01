@@ -162,6 +162,7 @@ test('should receive and apply update when update happens while app is running',
     cwd: app,
     stdio: 'pipe'
   })
+  helper.subprocessTeardown(t.teardown)(run)
   // On Windows, the process may exit with code 1 when terminated by the MSIX installer
   let exit = helper.waitForExit(run)
 
@@ -407,6 +408,7 @@ test('should receive and apply update when update happens while app is not runni
     cwd: app,
     stdio: 'pipe'
   })
+  helper.subprocessTeardown(t.teardown)(run)
   // On Windows, the process may exit with code 1 when terminated by the MSIX installer
   let exit = helper.waitForExit(run)
   const updated = new Promise((resolve) =>

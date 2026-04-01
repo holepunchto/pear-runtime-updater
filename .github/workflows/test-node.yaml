@@ -23,6 +23,9 @@ jobs:
     steps:
       - uses: holepunchto/actions/node-base@v1
 
+      - name: Install Bare
+        run: npm i -g bare
+
       - name: Install fixture dependencies
         shell: bash
         run: for dir in test/fixtures/*/; do (cd "$dir" && npm install --install-links); done
