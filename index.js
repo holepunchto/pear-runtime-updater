@@ -7,6 +7,7 @@ const ReadyResource = require('ready-resource')
 const link = require('pear-link')
 const hid = require('hypercore-id-encoding')
 const { platform, arch, isWindows } = require('which-runtime')
+const semver = require('bare-semver')
 const host = platform + '-' + arch
 
 module.exports = class PearRuntimeUpdater extends ReadyResource {
@@ -20,7 +21,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
     this.dir = opts.dir
     this.store = opts.store
-    this.version = opts.version || 0
+    this.version = opts.version || '0.0.0-0'
     this.app = opts.app
     this.name = opts.name
     this.bundled = opts.bundled || !!this.app
@@ -70,7 +71,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     if (isWindows) {
       const MSIXManager = require('msix-manager') // require must be here for platform compatibility
       const manager = new MSIXManager()
-      await manager.addPackage(nextApp)
+      await manager.addPackage(nextApp, { forceUpdateFromAnyVersion: true })
     } else {
       await fsx.swap(nextApp, this.app)
     }
@@ -93,10 +94,15 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.checkout = co
 
     const manifest = await co.get('/package.json')
-    if (!manifest || JSON.parse(manifest).version === this.version) {
+
+    const current = semver.Version.parse(this.version)
+    const remote = manifest ? semver.Version.parse(JSON.parse(manifest).version) : null
+
+    if (!remote || current.compare(remote) >= 0) {
       this.updating = false
       this.checkout = null
       await co.close()
+      if (this.drive.core.length > length) this._updateBackground()
       return
     }
 
