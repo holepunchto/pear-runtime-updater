@@ -122,10 +122,11 @@ test('should receive and apply update when update happens while app is running',
   t.comment('run pear-build')
   const staging = await tmpDir(t)
   await t.execution(
-    pearBuild(path.join(app, 'package.json'), {
+    pearBuild({
+      package: path.join(app, 'package.json'),
       [`${platform}${arch.charAt(0).toUpperCase() + arch.slice(1)}App`]: appBuildPath,
       target: staging
-    }),
+    }).done(),
     'pear-build ran successfully'
   )
 
@@ -194,10 +195,11 @@ test('should receive and apply update when update happens while app is running',
 
   t.comment('rerun pear-build')
   await t.execution(
-    pearBuild(path.join(app, 'package.json'), {
+    pearBuild({
+      package: path.join(app, 'package.json'),
       [`${platform}${arch.charAt(0).toUpperCase() + arch.slice(1)}App`]: appBuildPath,
       target: staging
-    }),
+    }).done(),
     'pear-build ran successfully'
   )
 
@@ -324,10 +326,11 @@ test('should receive and apply update when update happens while app is not runni
   t.comment('run pear-build')
   const staging = await tmpDir(t)
   await t.execution(
-    pearBuild(path.join(app, 'package.json'), {
+    pearBuild({
+      package: path.join(app, 'package.json'),
       [`${platform}${arch.charAt(0).toUpperCase() + arch.slice(1)}App`]: appBuildPath,
       target: staging
-    }),
+    }).done(),
     'pear-build ran successfully'
   )
 
@@ -367,10 +370,11 @@ test('should receive and apply update when update happens while app is not runni
 
   t.comment('rerun pear-build')
   await t.execution(
-    pearBuild(path.join(app, 'package.json'), {
+    pearBuild({
+      package: path.join(app, 'package.json'),
       [`${platform}${arch.charAt(0).toUpperCase() + arch.slice(1)}App`]: appBuildPath,
       target: staging
-    }),
+    }).done(),
     'pear-build ran successfully'
   )
 
