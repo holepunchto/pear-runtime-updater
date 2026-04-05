@@ -100,7 +100,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     } else {
       await fsx.swap(nextApp, this.app)
     }
-    await fs.promises.rm(this.next, { recursive: true, force: true })
   }
 
   _updateBackground() {
