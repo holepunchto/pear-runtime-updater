@@ -15,8 +15,7 @@
   "files": [
     "package.json",
     "index.js",
-    "index.d.ts",
-    "lib"
+    "index.d.ts"
   ],
   "scripts": {
     "format": "prettier . --write",

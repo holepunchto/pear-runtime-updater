@@ -105,6 +105,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.checkout = co
 
     const manifest = await co.get('/package.json')
+
     const current = semver.Version.parse(this.version)
     const remote = manifest ? semver.Version.parse(JSON.parse(manifest).version) : null
 
