@@ -42,10 +42,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.ready().catch(noop)
   }
 
-  get prefix() {
-    return `/by-arch/${host}/app/${this.name}`
-  }
-
   async _open() {
     await this.drive.ready()
     if (!this.updates) return
@@ -120,7 +116,8 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     const local = new Localdrive(next)
 
     this.emit('updating')
-    for await (const data of co.mirror(local, { prefix: this.prefix })) {
+    const prefix = prefixFor(host, this.name)
+    for await (const data of co.mirror(local, { prefix })) {
       this.emit('updating-delta', data)
     }
 
@@ -143,10 +140,11 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     if (!length) return
 
     const co = this.drive.checkout(length)
+    const prefix = prefixFor(host, this.name)
 
     try {
-      if (!(await co.has(this.prefix))) {
-        await co.download(this.prefix).done()
+      if (!(await co.has(prefix))) {
+        await co.download(prefix).done()
       }
     } finally {
       await co.close()
@@ -154,6 +152,10 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
     this.prefetched = true
   }
+}
+
+function prefixFor(host, name) {
+  return `/by-arch/${host}/app/${name}`
 }
 
 function noop() {}
