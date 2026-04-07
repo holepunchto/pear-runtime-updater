@@ -55,8 +55,7 @@ test('should prefetch the latest version on first run', async function (t) {
   await updater.ready()
   t.teardown(() => updater.close())
 
-  const keyPair = await store.createKeyPair('pear-runtime')
-  const swarm = new Hyperswarm({ bootstrap, keyPair })
+  const swarm = new Hyperswarm({ bootstrap })
   swarm.on('connection', (connection) => store.replicate(connection))
   t.teardown(() => swarm.destroy())
 
@@ -69,14 +68,7 @@ test('should prefetch the latest version on first run', async function (t) {
 
   await helper.waitFor(async () => {
     if (updater.drive.core.length < stager.drive.version) return false
-
-    const co = updater.drive.checkout(stager.drive.version)
-
-    try {
-      return await co.has(prefix)
-    } finally {
-      await co.close()
-    }
+    return await updater.drive.has(prefix)
   })
 })
 
@@ -114,8 +106,7 @@ test('should prefetch the latest version after partial metadata sync', async fun
     const drive = new Hyperdrive(store, stager.drive.key)
     await drive.ready()
 
-    const keyPair = await store.createKeyPair('pear-runtime-partial')
-    const swarm = new Hyperswarm({ bootstrap, keyPair })
+    const swarm = new Hyperswarm({ bootstrap })
     swarm.on('connection', (connection) => store.replicate(connection))
 
     const discovery = swarm.join(drive.core.discoveryKey, {
@@ -147,8 +138,7 @@ test('should prefetch the latest version after partial metadata sync', async fun
   await updater.ready()
   t.teardown(() => updater.close())
 
-  const keyPair = await store.createKeyPair('pear-runtime')
-  const swarm = new Hyperswarm({ bootstrap, keyPair })
+  const swarm = new Hyperswarm({ bootstrap })
   swarm.on('connection', (connection) => store.replicate(connection))
   t.teardown(() => swarm.destroy())
 
@@ -161,14 +151,7 @@ test('should prefetch the latest version after partial metadata sync', async fun
 
   await helper.waitFor(async () => {
     if (updater.drive.core.length < stager.drive.version) return false
-
-    const co = updater.drive.checkout(stager.drive.version)
-
-    try {
-      return await co.has(prefix)
-    } finally {
-      await co.close()
-    }
+    return await updater.drive.has(prefix)
   })
 })
 
