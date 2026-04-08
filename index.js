@@ -37,6 +37,8 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.checkout = null
     this.updating = false
     this.updated = false
+    this.applied = false
+    this.remoteVersion = null
 
     this.ready().catch(noop)
   }
@@ -46,7 +48,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     if (!this.updates) return
 
     if (this.bundled) {
-      await fs.promises.rm(path.join(this.dir, 'pear-runtime/next'), {
+      await fs.promises.rm(path.join(this.dir, 'pear-runtime', 'next'), {
         recursive: true,
         force: true
       })
@@ -67,7 +69,10 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     if (!this.updated || this.applied || !this.bundled) return
     this.applied = true
 
-    const nextApp = path.join(this.next, 'by-arch', host, 'app', this.name)
+    const next = this.next
+    const remoteVersion = this.remoteVersion
+
+    const nextApp = path.join(next, 'by-arch', host, 'app', this.name)
     if (isWindows) {
       const MSIXManager = require('msix-manager') // require must be here for platform compatibility
       const manager = new MSIXManager()
@@ -75,7 +80,12 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     } else {
       await fsx.swap(nextApp, this.app)
     }
-    await fs.promises.rm(this.next, { recursive: true, force: true })
+    await fs.promises.rm(next, { recursive: true, force: true })
+
+    this.version = remoteVersion.toString()
+    this.updated = false
+    this.next = null
+    this.remoteVersion = null
   }
 
   _updateBackground() {
@@ -88,7 +98,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
     const length = this.drive.core.length
     const id = length + '.' + this.drive.core.fork
-    const next = path.join(this.dir, 'pear-runtime/next', id)
+    const next = path.join(this.dir, 'pear-runtime', 'next', id)
     const co = this.drive.checkout(length)
 
     this.checkout = co
@@ -120,9 +130,11 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.checkout = null
     this.length = length
     this.next = next
+    this.remoteVersion = remote
 
     this.updating = false
     this.updated = true
+    this.applied = false
     this.emit('updated')
 
     if (this.drive.core.length > length) this._updateBackground()

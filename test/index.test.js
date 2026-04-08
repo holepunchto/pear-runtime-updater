@@ -128,6 +128,84 @@ test('should not update when remote version is older', async function (t) {
   }
 })
 
+test('should apply multiple updates per session', async function (t) {
+  t.timeout(60_000)
+
+  const testnet = await helper.createTestnet()
+  t.teardown(() => testnet.destroy())
+  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
+
+  const stagerDir = await tmpDir(t)
+  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
+  await stager.ready()
+  t.teardown(() => stager.close())
+
+  const staging1 = await tmpDir(t)
+  const local1 = new Localdrive(staging1)
+  await local1.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.1' })))
+  await local1.put(`/by-arch/${host}/app/test.txt`, Buffer.from('v1.0.1'))
+  await local1.close()
+  await stager.stage(staging1)
+  await stager.seed()
+
+  const dir = await tmpDir(t)
+  const appFile = path.join(dir, 'test.txt')
+  await fs.promises.writeFile(appFile, 'v1.0.0')
+
+  const store = new Corestore(path.join(dir, 'corestore'))
+  const updater = new Updater({
+    dir,
+    app: appFile,
+    version: '1.0.0',
+    upgrade: stager.link,
+    name: 'test.txt',
+    store
+  })
+  await updater.ready()
+  t.teardown(() => updater.close())
+
+  const keyPair = await store.createKeyPair('test')
+  const swarm = new Hyperswarm({ keyPair, bootstrap })
+  swarm.on('connection', (c) => store.replicate(c))
+  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
+  await swarm.flush()
+  t.teardown(() => swarm.destroy())
+
+  const updated1 = new Promise((resolve) => updater.once('updated', resolve))
+  await updated1
+
+  t.is(updater.updated, true)
+
+  if (!isWindows) {
+    await updater.applyUpdate()
+    const content1 = await fs.promises.readFile(appFile, 'utf8')
+    t.is(content1, 'v1.0.1', 'first update applied')
+    t.is(updater.version, '1.0.1', 'version updated after first apply')
+    t.is(updater.updated, false, 'updated reset after apply')
+  }
+
+  const updated2 = new Promise((resolve) => updater.once('updated', resolve))
+
+  const staging2 = await tmpDir(t)
+  const local2 = new Localdrive(staging2)
+  await local2.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.2' })))
+  await local2.put(`/by-arch/${host}/app/test.txt`, Buffer.from('v1.0.2'))
+  await local2.close()
+  await stager.stage(staging2)
+
+  await updated2
+
+  t.is(updater.updated, true)
+
+  if (!isWindows) {
+    await updater.applyUpdate()
+    const content2 = await fs.promises.readFile(appFile, 'utf8')
+    t.is(content2, 'v1.0.2', 'second update applied')
+    t.is(updater.version, '1.0.2', 'version updated after second apply')
+    t.is(updater.updated, false, 'updated reset after second apply')
+  }
+})
+
 test('should update from prerelease to release', async function (t) {
   t.timeout(60_000)
 
