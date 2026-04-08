@@ -3,6 +3,7 @@ const path = require('path')
 const fs = require('fs')
 const tmpDir = require('test-tmp')
 const Corestore = require('corestore')
+const Hyperdrive = require('hyperdrive')
 const Hyperswarm = require('hyperswarm')
 const Localdrive = require('localdrive')
 const { platform, arch, isWindows } = require('which-runtime')
@@ -10,6 +11,149 @@ const helper = require('./helper')
 const Updater = require('..')
 
 const host = platform + '-' + arch
+
+test('should prefetch the latest version on first run', async function (t) {
+  t.timeout(120_000)
+
+  const testnet = await helper.createTestnet()
+  t.teardown(() => testnet.destroy())
+  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
+
+  const stagerDir = await tmpDir(t)
+  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
+  await stager.ready()
+  t.teardown(() => stager.close())
+
+  const staged = await tmpDir(t)
+  const appName = `updater-${host}`
+  const prefix = `/by-arch/${host}/app/${appName}`
+  const prefixDir = path.join(staged, 'by-arch', host, 'app', appName)
+
+  await fs.promises.mkdir(prefixDir, { recursive: true })
+  await fs.promises.writeFile(
+    path.join(staged, 'package.json'),
+    JSON.stringify({ version: '1.0.0' }, null, 2),
+    'utf8'
+  )
+  await fs.promises.writeFile(path.join(prefixDir, 'bundle.txt'), 'first run payload', 'utf8')
+
+  await stager.stage(staged)
+  await stager.seed()
+
+  const dir = await tmpDir(t)
+  const store = new Corestore(path.join(dir, 'pear-runtime/corestore'))
+  t.teardown(() => store.close())
+
+  const updater = new Updater({
+    bundled: true,
+    dir,
+    name: appName,
+    store,
+    upgrade: stager.link,
+    version: '1.0.0'
+  })
+  await updater.ready()
+  t.teardown(() => updater.close())
+
+  const swarm = new Hyperswarm({ bootstrap })
+  swarm.on('connection', (connection) => store.replicate(connection))
+  t.teardown(() => swarm.destroy())
+
+  const discovery = swarm.join(updater.drive.core.discoveryKey, {
+    client: true,
+    server: false
+  })
+  await discovery.flushed()
+  t.teardown(() => discovery.destroy())
+
+  await helper.waitFor(async () => {
+    if (updater.drive.core.length < stager.drive.version) return false
+    return await updater.drive.has(prefix)
+  })
+})
+
+test('should prefetch the latest version after partial metadata sync', async function (t) {
+  t.timeout(120_000)
+
+  const testnet = await helper.createTestnet()
+  t.teardown(() => testnet.destroy())
+  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
+
+  const stagerDir = await tmpDir(t)
+  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
+  await stager.ready()
+  t.teardown(() => stager.close())
+
+  const staged = await tmpDir(t)
+  const appName = `updater-${host}`
+  const prefix = `/by-arch/${host}/app/${appName}`
+  const prefixDir = path.join(staged, 'by-arch', host, 'app', appName)
+
+  await fs.promises.mkdir(prefixDir, { recursive: true })
+  await fs.promises.writeFile(
+    path.join(staged, 'package.json'),
+    JSON.stringify({ version: '1.0.0' }, null, 2),
+    'utf8'
+  )
+  await fs.promises.writeFile(path.join(prefixDir, 'bundle.txt'), 'partial sync payload', 'utf8')
+
+  await stager.stage(staged)
+  await stager.seed()
+
+  const dir = await tmpDir(t)
+  {
+    const store = new Corestore(path.join(dir, 'pear-runtime/corestore'))
+    const drive = new Hyperdrive(store, stager.drive.key)
+    await drive.ready()
+
+    const swarm = new Hyperswarm({ bootstrap })
+    swarm.on('connection', (connection) => store.replicate(connection))
+
+    const discovery = swarm.join(drive.core.discoveryKey, {
+      client: true,
+      server: false
+    })
+    await discovery.flushed()
+
+    await drive.update()
+    await drive.db.core.download({ start: 0, length: 1 }).done()
+
+    await discovery.destroy()
+    await swarm.destroy()
+    await drive.close()
+    await store.close()
+  }
+
+  const store = new Corestore(path.join(dir, 'pear-runtime/corestore'))
+  t.teardown(() => store.close())
+
+  const updater = new Updater({
+    bundled: true,
+    dir,
+    name: appName,
+    store,
+    upgrade: stager.link,
+    version: '1.0.0'
+  })
+  await updater.ready()
+  t.teardown(() => updater.close())
+
+  const swarm = new Hyperswarm({ bootstrap })
+  swarm.on('connection', (connection) => store.replicate(connection))
+  t.teardown(() => swarm.destroy())
+
+  const discovery = swarm.join(updater.drive.core.discoveryKey, {
+    client: true,
+    server: false
+  })
+  await discovery.flushed()
+  t.teardown(() => discovery.destroy())
+
+  await helper.waitFor(async () => {
+    if (updater.drive.core.length < stager.drive.version) return false
+    return await updater.drive.has(prefix)
+  })
+})
 
 test('should detect update when remote version is newer', async function (t) {
   t.timeout(60_000)
