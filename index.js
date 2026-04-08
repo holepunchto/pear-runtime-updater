@@ -35,7 +35,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
     this.next = null
     this.checkout = null
-    this.prefetched = false
     this.updating = false
     this.updated = false
 
@@ -87,12 +86,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     if (this.updating || !this.updates) return
     this.updating = true
 
-    await this.drive.update()
-
-    if (this.bundled && !this.prefetched) {
-      await this._prefetchLatest()
-    }
-
     const length = this.drive.core.length
     const id = length + '.' + this.drive.core.fork
     const next = path.join(this.dir, 'pear-runtime/next', id)
@@ -116,7 +109,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     const local = new Localdrive(next)
 
     this.emit('updating')
-    const prefix = prefixFor(host, this.name)
+    const prefix = `/by-arch/${host}/app/${this.name}`
     for await (const data of co.mirror(local, { prefix })) {
       this.emit('updating-delta', data)
     }
@@ -134,28 +127,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
     if (this.drive.core.length > length) this._updateBackground()
   }
-
-  async _prefetchLatest() {
-    const length = this.drive.core.length
-    if (!length) return
-
-    const co = this.drive.checkout(length)
-    const prefix = prefixFor(host, this.name)
-
-    try {
-      if (!(await co.has(prefix))) {
-        await co.download(prefix).done()
-      }
-    } finally {
-      await co.close()
-    }
-
-    this.prefetched = true
-  }
-}
-
-function prefixFor(host, name) {
-  return `/by-arch/${host}/app/${name}`
 }
 
 function noop() {}
