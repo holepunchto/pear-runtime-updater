@@ -90,7 +90,11 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     await this.drive.update()
 
     if (this.bundled && !this.prefetched) {
-      await this._prefetchLatest()
+      try {
+        await this._prefetchLatest()
+      } catch (err) {
+        this.emit('error', err)
+      }
     }
 
     const length = this.drive.core.length

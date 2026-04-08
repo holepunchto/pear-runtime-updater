@@ -155,6 +155,59 @@ test('should prefetch the latest version after partial metadata sync', async fun
   })
 })
 
+test('should continue updating when prefetch fails', async function (t) {
+  t.timeout(60_000)
+
+  const testnet = await helper.createTestnet()
+  t.teardown(() => testnet.destroy())
+  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
+
+  const stagerDir = await tmpDir(t)
+  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
+  await stager.ready()
+  t.teardown(() => stager.close())
+
+  const staging = await tmpDir(t)
+  const local = new Localdrive(staging)
+  await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.1' })))
+  await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('v2'))
+  await local.close()
+  await stager.stage(staging)
+  await stager.seed()
+
+  const dir = await tmpDir(t)
+  const store = new Corestore(path.join(dir, 'corestore'))
+  const updater = new Updater({
+    dir,
+    bundled: true,
+    version: '1.0.0',
+    upgrade: stager.link,
+    name: 'test.txt',
+    store
+  })
+  await updater.ready()
+  t.teardown(() => updater.close())
+
+  const prefetchError = new Error('prefetch failed')
+  updater._prefetchLatest = async function () {
+    throw prefetchError
+  }
+
+  updater.on('error', noop)
+  const updated = new Promise((resolve) => updater.once('updated', resolve))
+
+  const keyPair = await store.createKeyPair('test')
+  const swarm = new Hyperswarm({ keyPair, bootstrap })
+  swarm.on('connection', (c) => store.replicate(c))
+  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
+  await swarm.flush()
+  t.teardown(() => swarm.destroy())
+
+  await updated
+
+  t.is(updater.updated, true, 'update still completed')
+})
+
 test('should detect update when remote version is newer', async function (t) {
   t.timeout(60_000)
 
@@ -326,3 +379,5 @@ test('should update from prerelease to release', async function (t) {
     t.is(content, 'release', 'file was swapped')
   }
 })
+
+function noop() {}
