@@ -89,14 +89,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
     await this.drive.update()
 
-    if (this.bundled && !this.prefetched) {
-      try {
-        await this._prefetchLatest()
-      } catch (err) {
-        this.emit('error', err)
-      }
-    }
-
     const length = this.drive.core.length
     const id = length + '.' + this.drive.core.fork
     const next = path.join(this.dir, 'pear-runtime/next', id)
@@ -108,6 +100,14 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
     const current = semver.Version.parse(this.version)
     const remote = manifest ? semver.Version.parse(JSON.parse(manifest).version) : null
+
+    if (remote && current.compare(remote) === 0 && this.bundled && !this.prefetched) {
+      try {
+        await this._prefetchLatest()
+      } catch (err) {
+        this.emit('error', err)
+      }
+    }
 
     if (!remote || current.compare(remote) >= 0) {
       this.updating = false
