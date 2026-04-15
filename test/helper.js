@@ -66,5 +66,23 @@ module.exports = {
       })
       child.on('error', reject)
     })
+  },
+
+  async waitFor(assertion, { timeout = 20_000, interval = 100 } = {}) {
+    const start = Date.now()
+    let lastError = null
+
+    while (Date.now() - start < timeout) {
+      try {
+        if (await assertion()) return
+        lastError = null
+      } catch (err) {
+        lastError = err
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, interval))
+    }
+
+    throw lastError || new Error(`Timed out after ${timeout}ms`)
   }
 }
