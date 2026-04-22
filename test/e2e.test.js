@@ -636,10 +636,11 @@ test('should update from prerelease to release', async (t) => {
   t.comment('run pear-build')
   const staging = await tmpDir(t)
   await t.execution(
-    pearBuild(path.join(app, 'package.json'), {
+    pearBuild({
+      package: path.join(app, 'package.json'),
       [`${platform}${arch.charAt(0).toUpperCase() + arch.slice(1)}App`]: appBuildPath,
       target: staging
-    }),
+    }).done(),
     'pear-build ran successfully'
   )
 
@@ -690,10 +691,11 @@ test('should update from prerelease to release', async (t) => {
 
   t.comment('rerun pear-build')
   await t.execution(
-    pearBuild(path.join(app, 'package.json'), {
+    pearBuild({
+      package: path.join(app, 'package.json'),
       [`${platform}${arch.charAt(0).toUpperCase() + arch.slice(1)}App`]: appBuildPath,
       target: staging
-    }),
+    }).done(),
     'pear-build ran successfully'
   )
 

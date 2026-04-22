@@ -38,7 +38,7 @@ jobs:
           npm run test:node:e2e
 
       - name: Run Windows Squirrel e2e test
-        if: matrix.platform == 'win32'
+        if: matrix.platform == 'win32' && always()
         shell: pwsh
         run: |
           $env:PRU_WINDOWS_E2E_MODE = "squirrel"
