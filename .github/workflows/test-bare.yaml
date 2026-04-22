@@ -29,3 +29,7 @@ jobs:
 
       - name: Run tests
         run: ${{ matrix.platform == 'linux' && 'xvfb-run ' || '' }}npm run test:bare
+
+      - name: Run Windows Squirrel manager test (Bare)
+        if: matrix.platform == 'win32'
+        run: npm run test:squirrel:bare

@@ -29,3 +29,11 @@ jobs:
 
       - name: Run tests
         run: ${{ matrix.platform == 'linux' && 'xvfb-run ' || '' }}npm run test:node
+
+      - name: Run Windows MSIX e2e test
+        if: matrix.platform == 'win32'
+        run: npm run test:node:e2e
+
+      - name: Run Windows Squirrel manager test
+        if: matrix.platform == 'win32'
+        run: npm run test:squirrel:node

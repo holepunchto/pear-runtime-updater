@@ -7,6 +7,10 @@
   "main": "index.js",
   "exports": {
     "./package": "./package.json",
+    "./squirrel-manager": {
+      "types": "./squirrel-manager.d.ts",
+      "default": "./squirrel-manager.js"
+    },
     ".": {
       "types": "./index.d.ts",
       "default": "./index.js"
@@ -15,13 +19,18 @@
   "files": [
     "package.json",
     "index.js",
-    "index.d.ts"
+    "index.d.ts",
+    "squirrel-manager.js",
+    "squirrel-manager.d.ts"
   ],
   "scripts": {
     "format": "prettier . --write",
     "test": "npm run test:node && npm run test:bare",
     "test:node": "brittle-node test/index.test.js",
+    "test:node:e2e": "brittle-node test/e2e.test.js",
+    "test:squirrel:node": "brittle-node test/squirrel-manager.test.js",
     "test:bare": "brittle-bare test/index.test.js",
+    "test:squirrel:bare": "brittle-bare test/squirrel-manager.test.js",
     "lint": "prettier --check . && lunte"
   },
   "imports": {

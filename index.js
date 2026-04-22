@@ -8,6 +8,7 @@ const link = require('pear-link')
 const hid = require('hypercore-id-encoding')
 const { platform, arch, isWindows } = require('which-runtime')
 const semver = require('bare-semver')
+const SquirrelManager = require('./squirrel-manager')
 const host = platform + '-' + arch
 
 module.exports = class PearRuntimeUpdater extends ReadyResource {
@@ -38,6 +39,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.prefetched = false
     this.updating = false
     this.updated = false
+    this.windowsStagedPath = null
 
     this.ready().catch(noop)
   }
@@ -70,9 +72,12 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
     const nextApp = path.join(this.next, 'by-arch', host, 'app', this.name)
     if (isWindows) {
-      const MSIXManager = require('msix-manager') // require must be here for platform compatibility
-      const manager = new MSIXManager()
-      await manager.addPackage(nextApp, { forceUpdateFromAnyVersion: true })
+      const applied = await this._applyWindowsUpdate(nextApp)
+      if (!applied) {
+        const MSIXManager = require('msix-manager') // require must be here for platform compatibility
+        const manager = new MSIXManager()
+        await manager.addPackage(nextApp, { forceUpdateFromAnyVersion: true })
+      }
     } else {
       await fsx.swap(nextApp, this.app)
     }
@@ -120,7 +125,8 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     const local = new Localdrive(next)
 
     this.emit('updating')
-    const prefix = prefixFor(host, this.name)
+    const appRoot = `/by-arch/${host}/app`
+    const prefix = await this._resolveMirrorPrefix(co, appRoot)
     for await (const data of co.mirror(local, { prefix })) {
       this.emit('updating-delta', data)
     }
@@ -131,6 +137,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.checkout = null
     this.length = length
     this.next = next
+    this.windowsStagedPath = path.join(next, this._relativeStagedPathForPrefix(prefix, appRoot))
 
     this.updating = false
     this.updated = true
@@ -155,6 +162,40 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     }
 
     this.prefetched = true
+  }
+
+  async _resolveMirrorPrefix(checkout, appRoot) {
+    const fallback = prefixFor(host, this.name)
+    if (!isWindows) return fallback
+
+    const squirrel = new SquirrelManager()
+    if (!squirrel.isSquirrelName(this.name)) return fallback
+
+    const candidate = await squirrel.findCandidate(checkout, appRoot, { name: this.name })
+    return candidate?.prefix || fallback
+  }
+
+  _relativeStagedPathForPrefix(prefix, appRoot) {
+    const normalizedPrefix = String(prefix || '').replace(/\\/g, '/')
+    if (!normalizedPrefix) return path.join('by-arch', host, 'app', this.name)
+    const appRootNormalized = appRoot.replace(/\\/g, '/')
+
+    if (normalizedPrefix === appRootNormalized) return path.join('by-arch', host, 'app')
+    if (normalizedPrefix.startsWith(`${appRootNormalized}/`)) {
+      const suffix = normalizedPrefix.slice(appRootNormalized.length + 1)
+      return path.join('by-arch', host, 'app', suffix)
+    }
+    return path.join('by-arch', host, 'app', this.name)
+  }
+
+  async _applyWindowsUpdate(nextApp) {
+    const squirrel = new SquirrelManager()
+    const stagedPath = this.windowsStagedPath || nextApp
+    const payload = await squirrel.payloadFromPath(stagedPath)
+    if (!payload) return false
+
+    await squirrel.apply(payload, { app: this.app })
+    return true
   }
 }
 
