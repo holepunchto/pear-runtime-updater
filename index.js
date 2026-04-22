@@ -40,6 +40,10 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.updated = false
     this.running = false
 
+    // TEST-ONLY throwaway knob: first _update() runs with this timeout. Widens the
+    // `running=true` window so the re-entry guard + catch-up can be exercised. Do NOT merge.
+    this._firstUpdateTimeout = opts._firstUpdateTimeout || 0
+
     this.ready().catch(noop)
   }
 
@@ -53,7 +57,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
         force: true
       })
 
-      this._updateBackground()
+      this._updateBackground(this._firstUpdateTimeout)
       this.drive.core.on('append', () => this._updateBackground())
     }
   }
@@ -80,17 +84,22 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     await fs.promises.rm(this.next, { recursive: true, force: true })
   }
 
-  _updateBackground() {
-    this._update().catch((err) => this.emit('error', err))
+  _updateBackground(timeout) {
+    this._update(timeout).catch((err) => this.emit('error', err))
   }
 
-  async _update() {
+  async _update(timeout = 0) {
     if (this.running || !this.updates) return
     this.running = true
 
     await this.drive.update()
 
     const length = this.drive.core.length
+
+    // TEST-ONLY sleep: widens `running=true` window AFTER length snapshot so concurrent
+    // appends advance `drive.core.length` past it, exercising the catch-up re-kick.
+    if (timeout > 0) await new Promise((resolve) => setTimeout(resolve, timeout))
+
     const id = length + '.' + this.drive.core.fork
     const next = path.join(this.dir, 'pear-runtime/next', id)
     const co = this.drive.checkout(length)
