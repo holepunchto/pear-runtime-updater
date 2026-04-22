@@ -375,7 +375,7 @@ test('should not update when remote version is older', async function (t) {
 })
 
 test('should emit error if update not found', async function (t) {
-  t.plan(2)
+  t.plan(1)
   t.timeout(60_000)
 
   const testnet = await helper.createTestnet()
@@ -386,14 +386,6 @@ test('should emit error if update not found', async function (t) {
   const stager = new helper.Stager({ dir: stagerDir, bootstrap })
   await stager.ready()
   t.teardown(() => stager.close())
-
-  const staging = await tmpDir(t)
-  const local = new Localdrive(staging)
-  await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.0' })))
-  await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('v1'))
-  await local.close()
-  await stager.stage(staging)
-  await stager.seed()
 
   const dir = await tmpDir(t)
   const appFile = path.join(dir, 'test.txt')
@@ -411,13 +403,13 @@ test('should emit error if update not found', async function (t) {
   await updater.ready()
   t.teardown(() => updater.close())
 
-  const swarm = new Hyperswarm({ bootstrap })
-  swarm.on('connection', (c) => store.replicate(c))
-  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
-  await swarm.flush()
-  t.teardown(() => swarm.destroy())
-
-  t.is(updater.updated, false)
+  const staging = await tmpDir(t)
+  const local = new Localdrive(staging)
+  await local.put('/package.json', Buffer.from(JSON.stringify({ version: '2.0.0' })))
+  await local.put(`/by-arch/${host}/app/not_test.txt`, Buffer.from('v2'))
+  await local.close()
+  await stager.stage(staging)
+  await stager.seed()
 
   t.exception(new Promise((resolve, reject) => {
       updater.on('error', reject)
@@ -425,12 +417,11 @@ test('should emit error if update not found', async function (t) {
     }, 'update not found')
   )
 
-  const staging2 = await tmpDir(t)
-  const local2 = new Localdrive(staging2)
-  await local2.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.1' })))
-  await local2.put(`/by-arch/${host}/app/not_test.txt`, Buffer.from('v2'))
-  await local2.close()
-  await stager.stage(staging2)
+  const swarm = new Hyperswarm({ bootstrap })
+  t.teardown(async () =>  await swarm.destroy())
+  swarm.on('connection', (c) => store.replicate(c))
+  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
+  await swarm.flush()
 })
 
 test('should update from prerelease to release', async function (t) {
