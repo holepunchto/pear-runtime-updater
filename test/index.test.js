@@ -412,12 +412,12 @@ test('should emit error if update not found', async function (t) {
   await stager.seed()
 
   const updated = new Promise((resolve, reject) => {
-      updater.on('error', reject)
-      updater.on('updating', resolve)
-    })
+    updater.on('error', reject)
+    updater.on('updating', resolve)
+  })
 
   const swarm = new Hyperswarm({ bootstrap })
-  t.teardown(async () =>  await swarm.destroy())
+  t.teardown(async () => await swarm.destroy())
   swarm.on('connection', (c) => store.replicate(c))
   swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
   await swarm.flush()
