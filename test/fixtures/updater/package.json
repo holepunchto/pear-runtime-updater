@@ -2,6 +2,8 @@
   "name": "updater",
   "productName": "Updater",
   "version": "1.0.0",
+  "description": "Updater e2e fixture app",
+  "author": "Holepunch",
   "main": "index.js",
   "scripts": {
     "make": "electron-forge make",
