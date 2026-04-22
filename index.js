@@ -118,9 +118,10 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     }
 
     const local = new Localdrive(next)
-
-    this.emit('updating')
     const prefix = prefixFor(host, this.name)
+    const exists = await co.get(prefix)
+    if (!exists) throw new Error('update not found')
+    this.emit('updating')
     for await (const data of co.mirror(local, { prefix })) {
       this.emit('updating-delta', data)
     }
