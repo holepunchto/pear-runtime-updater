@@ -9,7 +9,6 @@ const Localdrive = require('localdrive')
 const { platform, arch, isWindows } = require('which-runtime')
 const helper = require('./helper')
 const Updater = require('..')
-const { rejects } = require('assert')
 
 const host = platform + '-' + arch
 
