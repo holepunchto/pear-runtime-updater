@@ -96,8 +96,13 @@ function runMake(cwd) {
   return helper.waitForExit(child)
 }
 
-function resolveWindowsBuildPath(app, version) {
+function resolveWindowsBuildPath(app) {
   if (!windowsUseSquirrel) return path.join(app, 'out', 'make', 'msix', arch, 'Updater.msix')
+  return path.join(app, 'out', `Updater-win32-${arch}`, 'Updater.exe')
+}
+
+function resolveWindowsInstallPath(app, version) {
+  if (!windowsUseSquirrel) return resolveWindowsBuildPath(app)
   return findSquirrelSetupExe(path.join(app, 'out', 'make', 'squirrel.windows', arch), version)
 }
 
@@ -155,6 +160,7 @@ test('should receive and apply update when update happens while app is running',
 
   t.comment('build app')
   let appBuildPath
+  let appInstallPath
   await t.execution(runMake(app), 'app built successfully')
   if (isLinux) {
     appBuildPath = path.join(app, 'out', 'make', `Updater.AppImage`)
@@ -164,7 +170,10 @@ test('should receive and apply update when update happens while app is running',
     )
   }
   if (isMac) appBuildPath = path.join(app, 'out', `Updater-${host}`, 'Updater.app')
-  if (isWindows) appBuildPath = resolveWindowsBuildPath(app, '1.0.0')
+  if (isWindows) {
+    appBuildPath = resolveWindowsBuildPath(app)
+    appInstallPath = resolveWindowsInstallPath(app, '1.0.0')
+  }
 
   t.comment(isWindows ? 'trust and install app' : 'copy build to run dir')
   const runDir = await tmpDir(t)
@@ -179,17 +188,17 @@ test('should receive and apply update when update happens while app is running',
     await new Localdrive(appBuildPath).mirror(new Localdrive(appRunPath)).done()
   }
   if (isWindows && !windowsUseSquirrel) {
-    await t.execution(trustMsixCertificate(appBuildPath), 'trusted MSIX certificate successfully')
+    await t.execution(trustMsixCertificate(appInstallPath), 'trusted MSIX certificate successfully')
 
     const MSIXManager = require('msix-manager')
     const manager = new MSIXManager()
-    await t.execution(manager.addPackage(appBuildPath), 'installed app successfully')
+    await t.execution(manager.addPackage(appInstallPath), 'installed app successfully')
     t.teardown(() => removeMsixPackage('Updater'))
 
     appRunPath = getInstalledMsixExe('Updater')
   }
   if (isWindows && windowsUseSquirrel) {
-    const child = spawn(appBuildPath, ['/S'], { stdio: 'ignore' })
+    const child = spawn(appInstallPath, ['/S'], { stdio: 'ignore' })
     await t.execution(helper.waitForExit(child), 'installed Squirrel app successfully')
     t.teardown(() => removeSquirrelPackage('Updater'))
     await new Promise((resolve) => setTimeout(resolve, 4000))
@@ -368,6 +377,7 @@ test('should receive and apply update when update happens while app is not runni
 
   t.comment('build app')
   let appBuildPath
+  let appInstallPath
   await t.execution(runMake(app), 'app built successfully')
   if (isLinux) {
     appBuildPath = path.join(app, 'out', 'make', `Updater.AppImage`)
@@ -377,7 +387,10 @@ test('should receive and apply update when update happens while app is not runni
     )
   }
   if (isMac) appBuildPath = path.join(app, 'out', `Updater-${host}`, 'Updater.app')
-  if (isWindows) appBuildPath = resolveWindowsBuildPath(app, '1.0.0')
+  if (isWindows) {
+    appBuildPath = resolveWindowsBuildPath(app)
+    appInstallPath = resolveWindowsInstallPath(app, '1.0.0')
+  }
 
   t.comment(isWindows ? 'trust and install app' : 'copy build to run dir')
   const runDir = await tmpDir(t)
@@ -392,17 +405,17 @@ test('should receive and apply update when update happens while app is not runni
     await new Localdrive(appBuildPath).mirror(new Localdrive(appRunPath)).done()
   }
   if (isWindows && !windowsUseSquirrel) {
-    await t.execution(trustMsixCertificate(appBuildPath), 'trusted MSIX certificate successfully')
+    await t.execution(trustMsixCertificate(appInstallPath), 'trusted MSIX certificate successfully')
 
     const MSIXManager = require('msix-manager')
     const manager = new MSIXManager()
-    await t.execution(manager.addPackage(appBuildPath), 'installed app successfully')
+    await t.execution(manager.addPackage(appInstallPath), 'installed app successfully')
     t.teardown(() => removeMsixPackage('Updater'))
 
     appRunPath = getInstalledMsixExe('Updater')
   }
   if (isWindows && windowsUseSquirrel) {
-    const child = spawn(appBuildPath, ['/S'], { stdio: 'ignore' })
+    const child = spawn(appInstallPath, ['/S'], { stdio: 'ignore' })
     await t.execution(helper.waitForExit(child), 'installed Squirrel app successfully')
     t.teardown(() => removeSquirrelPackage('Updater'))
     await new Promise((resolve) => setTimeout(resolve, 4000))
@@ -592,6 +605,7 @@ test('should update from prerelease to release', async (t) => {
 
   t.comment('build app')
   let appBuildPath
+  let appInstallPath
   {
     await t.execution(runMake(app), 'app built successfully')
   }
@@ -603,7 +617,10 @@ test('should update from prerelease to release', async (t) => {
     )
   }
   if (isMac) appBuildPath = path.join(app, 'out', `Updater-${host}`, 'Updater.app')
-  if (isWindows) appBuildPath = resolveWindowsBuildPath(app, '1.0.0-rc.1')
+  if (isWindows) {
+    appBuildPath = resolveWindowsBuildPath(app)
+    appInstallPath = resolveWindowsInstallPath(app, '1.0.0-rc.1')
+  }
 
   t.comment(isWindows ? 'trust and install app' : 'copy build to run dir')
   const runDir = await tmpDir(t)
@@ -618,17 +635,17 @@ test('should update from prerelease to release', async (t) => {
     await new Localdrive(appBuildPath).mirror(new Localdrive(appRunPath)).done()
   }
   if (isWindows && !windowsUseSquirrel) {
-    await t.execution(trustMsixCertificate(appBuildPath), 'trusted MSIX certificate successfully')
+    await t.execution(trustMsixCertificate(appInstallPath), 'trusted MSIX certificate successfully')
 
     const MSIXManager = require('msix-manager')
     const manager = new MSIXManager()
-    await t.execution(manager.addPackage(appBuildPath), 'installed app successfully')
+    await t.execution(manager.addPackage(appInstallPath), 'installed app successfully')
     t.teardown(() => removeMsixPackage('Updater'))
 
     appRunPath = getInstalledMsixExe('Updater')
   }
   if (isWindows && windowsUseSquirrel) {
-    const child = spawn(appBuildPath, ['/S'], { stdio: 'ignore' })
+    const child = spawn(appInstallPath, ['/S'], { stdio: 'ignore' })
     await t.execution(helper.waitForExit(child), 'installed Squirrel app successfully')
     t.teardown(() => removeSquirrelPackage('Updater'))
     await new Promise((resolve) => setTimeout(resolve, 4000))
