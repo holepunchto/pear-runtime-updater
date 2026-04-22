@@ -40,7 +40,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.updating = false
     this.updated = false
 
-    this._update = debounceify(this._update.bind(this))
+    this._debouncedUpdate = debounceify(this._update.bind(this))
 
     this.ready().catch(noop)
   }
@@ -55,8 +55,8 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
         force: true
       })
 
-      this._updateBackground()
-      this.drive.core.on('append', () => this._updateBackground())
+      this._debouncedUpdate()
+      this.drive.core.on('append', () => this._debouncedUpdate().catch((err) => this.emit('error', err)))
     }
   }
 
@@ -80,10 +80,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
       await fsx.swap(nextApp, this.app)
     }
     await fs.promises.rm(this.next, { recursive: true, force: true })
-  }
-
-  _updateBackground() {
-    this._update().catch((err) => this.emit('error', err))
   }
 
   async _update() {
