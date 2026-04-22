@@ -780,14 +780,3 @@ test('should update from prerelease to release', async (t) => {
 
   await t.execution(await exit, 'app exited successfully')
 })
-if (isWindows) {
-  appBuildPath = resolveWindowsBuildPath(app, '1.0.1')
-}
-
-if (isWindows) {
-  appBuildPath = resolveWindowsBuildPath(app, '1.0.1')
-}
-
-if (isWindows) {
-  appBuildPath = resolveWindowsBuildPath(app, '1.0.0')
-}

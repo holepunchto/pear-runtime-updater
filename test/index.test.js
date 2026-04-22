@@ -189,7 +189,7 @@ test('should continue updating when prefetch fails', async function (t) {
   t.teardown(() => updater.close())
 
   const prefetchError = new Error('prefetch failed')
-  updater._prefetchLatest = async function () {
+  updater._prefetchLatest = function () {
     throw prefetchError
   }
 
@@ -241,7 +241,7 @@ test('should not prefetch before updating to a newer version', async function (t
   t.teardown(() => updater.close())
 
   let prefetched = false
-  updater._prefetchLatest = async function () {
+  updater._prefetchLatest = function () {
     prefetched = true
   }
 
