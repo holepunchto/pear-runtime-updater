@@ -12,6 +12,10 @@ const host = platform + '-' + arch
 const fixture = path.join(__dirname, 'fixtures', 'updater')
 const npm = isWindows ? 'npm.cmd' : 'npm'
 const powershell = 'pwsh.exe'
+const windowsMode = isWindows
+  ? String(process.env.PRU_WINDOWS_E2E_MODE || 'msix').toLowerCase()
+  : ''
+const windowsUseSquirrel = isWindows && windowsMode === 'squirrel'
 
 function getInstalledMsixExe(name) {
   const result = spawnSync(powershell, [
@@ -23,12 +27,44 @@ function getInstalledMsixExe(name) {
   return path.join(installLocation, 'app', name + '.exe')
 }
 
+function getInstalledSquirrelExe(name) {
+  const baseDir = path.join(process.env.LOCALAPPDATA || process.env.USERPROFILE, name)
+  const candidates = []
+
+  try {
+    for (const entry of fs.readdirSync(baseDir, { withFileTypes: true })) {
+      if (!entry.isDirectory()) continue
+      if (!entry.name.toLowerCase().startsWith('app-')) continue
+      const exe = path.join(baseDir, entry.name, `${name}.exe`)
+      if (fs.existsSync(exe)) candidates.push({ dir: entry.name, exe })
+    }
+  } catch {}
+
+  candidates.sort((a, b) => a.dir.localeCompare(b.dir))
+  if (candidates.length > 0) return candidates[candidates.length - 1].exe
+
+  const rootExe = path.join(baseDir, `${name}.exe`)
+  if (fs.existsSync(rootExe)) return rootExe
+  throw new Error('Squirrel package not found: ' + name)
+}
+
 function removeMsixPackage(name) {
   const child = spawn(
     powershell,
     ['-Command', `Get-AppxPackage -Name '${name}' | Remove-AppxPackage`],
     { stdio: 'ignore' }
   )
+  return helper.waitForExit(child).catch(() => {})
+}
+
+function removeSquirrelPackage(name) {
+  const updateExe = path.join(
+    process.env.LOCALAPPDATA || process.env.USERPROFILE,
+    name,
+    'Update.exe'
+  )
+  if (!fs.existsSync(updateExe)) return Promise.resolve()
+  const child = spawn(updateExe, ['--uninstall', '-s'], { stdio: 'ignore' })
   return helper.waitForExit(child).catch(() => {})
 }
 
@@ -43,6 +79,41 @@ function trustMsixCertificate(msixPath) {
   )
 
   return helper.waitForExit(child)
+}
+
+function runMake(cwd) {
+  const child = spawn(npm, ['run', 'make'], {
+    cwd,
+    shell: true,
+    env: {
+      ...process.env,
+      UPDATER_WINDOWS_MAKER: windowsUseSquirrel ? 'squirrel' : 'msix',
+      PRU_WINDOWS_E2E_MODE: windowsMode || 'msix'
+    }
+  })
+  return helper.waitForExit(child)
+}
+
+function resolveWindowsBuildPath(app, version) {
+  if (!windowsUseSquirrel) return path.join(app, 'out', 'make', 'msix', arch, 'Updater.msix')
+  return findSquirrelSetupExe(path.join(app, 'out', 'make', 'squirrel.windows', arch), version)
+}
+
+function findSquirrelSetupExe(root, version) {
+  const wanted = String(version || '')
+  const files = []
+  const walk = (dir) => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name)
+      if (entry.isDirectory()) walk(full)
+      else if (/setup.*\.exe$/i.test(entry.name)) files.push(full)
+    }
+  }
+  walk(root)
+  const exact = files.find((file) => file.toLowerCase().includes(wanted.toLowerCase()))
+  if (exact) return exact
+  if (files.length > 0) return files[0]
+  throw new Error(`Squirrel Setup.exe not found in ${root}`)
 }
 
 test('should receive and apply update when update happens while app is running', async (t) => {
@@ -82,10 +153,7 @@ test('should receive and apply update when update happens while app is running',
 
   t.comment('build app')
   let appBuildPath
-  {
-    const child = spawn(npm, ['run', 'make'], { cwd: app, shell: true })
-    await t.execution(helper.waitForExit(child), 'app built successfully')
-  }
+  await t.execution(runMake(app), 'app built successfully')
   if (isLinux) {
     appBuildPath = path.join(app, 'out', 'make', `Updater.AppImage`)
     await fs.promises.rename(
@@ -94,7 +162,7 @@ test('should receive and apply update when update happens while app is running',
     )
   }
   if (isMac) appBuildPath = path.join(app, 'out', `Updater-${host}`, 'Updater.app')
-  if (isWindows) appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'Updater.msix')
+  if (isWindows) appBuildPath = resolveWindowsBuildPath(app, '1.0.0')
 
   t.comment(isWindows ? 'trust and install app' : 'copy build to run dir')
   const runDir = await tmpDir(t)
@@ -108,7 +176,7 @@ test('should receive and apply update when update happens while app is running',
     appRunPath = path.join(runDir, 'Updater.app')
     await new Localdrive(appBuildPath).mirror(new Localdrive(appRunPath)).done()
   }
-  if (isWindows) {
+  if (isWindows && !windowsUseSquirrel) {
     await t.execution(trustMsixCertificate(appBuildPath), 'trusted MSIX certificate successfully')
 
     const MSIXManager = require('msix-manager')
@@ -117,6 +185,13 @@ test('should receive and apply update when update happens while app is running',
     t.teardown(() => removeMsixPackage('Updater'))
 
     appRunPath = getInstalledMsixExe('Updater')
+  }
+  if (isWindows && windowsUseSquirrel) {
+    const child = spawn(appBuildPath, ['/S'], { stdio: 'ignore' })
+    await t.execution(helper.waitForExit(child), 'installed Squirrel app successfully')
+    t.teardown(() => removeSquirrelPackage('Updater'))
+    await new Promise((resolve) => setTimeout(resolve, 4000))
+    appRunPath = getInstalledSquirrelExe('Updater')
   }
 
   t.comment('run pear-build')
@@ -183,8 +258,7 @@ test('should receive and apply update when update happens while app is running',
       fs.promises.rm(path.join(app, 'out'), { recursive: true }),
       'removed old build successfully'
     )
-    const child = spawn(npm, ['run', 'make'], { cwd: app, shell: true })
-    await t.execution(helper.waitForExit(child), 'app rebuilt successfully')
+    await t.execution(runMake(app), 'app rebuilt successfully')
   }
   if (isLinux) {
     await fs.promises.rename(
@@ -218,14 +292,20 @@ test('should receive and apply update when update happens while app is running',
   t.comment('wait for exit')
   await t.execution(await exit, 'app exited successfully')
 
-  if (isWindows) {
+  if (isWindows && !windowsUseSquirrel) {
     t.comment('give time for MSIX installer to finish')
+    await new Promise((resolve) => setTimeout(resolve, 5000))
+  }
+  if (isWindows && windowsUseSquirrel) {
+    t.comment('give time for Squirrel installer to finish')
     await new Promise((resolve) => setTimeout(resolve, 5000))
   }
 
   t.comment('rerun app')
   if (isWindows) {
-    appRunPath = getInstalledMsixExe('Updater')
+    appRunPath = windowsUseSquirrel
+      ? getInstalledSquirrelExe('Updater')
+      : getInstalledMsixExe('Updater')
     runParams.execPath = appRunPath
   }
   run = spawn(runParams.execPath, runParams.args, {
@@ -286,10 +366,7 @@ test('should receive and apply update when update happens while app is not runni
 
   t.comment('build app')
   let appBuildPath
-  {
-    const child = spawn(npm, ['run', 'make'], { cwd: app, shell: true })
-    await t.execution(helper.waitForExit(child), 'app built successfully')
-  }
+  await t.execution(runMake(app), 'app built successfully')
   if (isLinux) {
     appBuildPath = path.join(app, 'out', 'make', `Updater.AppImage`)
     await fs.promises.rename(
@@ -298,7 +375,7 @@ test('should receive and apply update when update happens while app is not runni
     )
   }
   if (isMac) appBuildPath = path.join(app, 'out', `Updater-${host}`, 'Updater.app')
-  if (isWindows) appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'Updater.msix')
+  if (isWindows) appBuildPath = resolveWindowsBuildPath(app, '1.0.0')
 
   t.comment(isWindows ? 'trust and install app' : 'copy build to run dir')
   const runDir = await tmpDir(t)
@@ -312,7 +389,7 @@ test('should receive and apply update when update happens while app is not runni
     appRunPath = path.join(runDir, 'Updater.app')
     await new Localdrive(appBuildPath).mirror(new Localdrive(appRunPath)).done()
   }
-  if (isWindows) {
+  if (isWindows && !windowsUseSquirrel) {
     await t.execution(trustMsixCertificate(appBuildPath), 'trusted MSIX certificate successfully')
 
     const MSIXManager = require('msix-manager')
@@ -321,6 +398,13 @@ test('should receive and apply update when update happens while app is not runni
     t.teardown(() => removeMsixPackage('Updater'))
 
     appRunPath = getInstalledMsixExe('Updater')
+  }
+  if (isWindows && windowsUseSquirrel) {
+    const child = spawn(appBuildPath, ['/S'], { stdio: 'ignore' })
+    await t.execution(helper.waitForExit(child), 'installed Squirrel app successfully')
+    t.teardown(() => removeSquirrelPackage('Updater'))
+    await new Promise((resolve) => setTimeout(resolve, 4000))
+    appRunPath = getInstalledSquirrelExe('Updater')
   }
 
   t.comment('run pear-build')
@@ -358,8 +442,7 @@ test('should receive and apply update when update happens while app is not runni
       fs.promises.rm(path.join(app, 'out'), { recursive: true }),
       'removed old build successfully'
     )
-    const child = spawn(npm, ['run', 'make'], { cwd: app, shell: true })
-    await t.execution(helper.waitForExit(child), 'app rebuilt successfully')
+    await t.execution(runMake(app), 'app rebuilt successfully')
   }
   if (isLinux) {
     await fs.promises.rename(
@@ -421,14 +504,20 @@ test('should receive and apply update when update happens while app is not runni
   t.comment('wait for exit')
   await t.execution(await exit, 'app exited successfully')
 
-  if (isWindows) {
+  if (isWindows && !windowsUseSquirrel) {
     t.comment('give time for MSIX installer to finish')
+    await new Promise((resolve) => setTimeout(resolve, 5000))
+  }
+  if (isWindows && windowsUseSquirrel) {
+    t.comment('give time for Squirrel installer to finish')
     await new Promise((resolve) => setTimeout(resolve, 5000))
   }
 
   t.comment('rerun app')
   if (isWindows) {
-    appRunPath = getInstalledMsixExe('Updater')
+    appRunPath = windowsUseSquirrel
+      ? getInstalledSquirrelExe('Updater')
+      : getInstalledMsixExe('Updater')
     runParams.execPath = appRunPath
   }
   run = spawn(runParams.execPath, runParams.args, {
@@ -502,8 +591,7 @@ test('should update from prerelease to release', async (t) => {
   t.comment('build app')
   let appBuildPath
   {
-    const child = spawn(npm, ['run', 'make'], { cwd: app, shell: true })
-    await t.execution(helper.waitForExit(child), 'app built successfully')
+    await t.execution(runMake(app), 'app built successfully')
   }
   if (isLinux) {
     appBuildPath = path.join(app, 'out', 'make', 'Updater.AppImage')
@@ -513,7 +601,7 @@ test('should update from prerelease to release', async (t) => {
     )
   }
   if (isMac) appBuildPath = path.join(app, 'out', `Updater-${host}`, 'Updater.app')
-  if (isWindows) appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'Updater.msix')
+  if (isWindows) appBuildPath = resolveWindowsBuildPath(app, '1.0.0-rc.1')
 
   t.comment(isWindows ? 'trust and install app' : 'copy build to run dir')
   const runDir = await tmpDir(t)
@@ -527,7 +615,7 @@ test('should update from prerelease to release', async (t) => {
     appRunPath = path.join(runDir, 'Updater.app')
     await new Localdrive(appBuildPath).mirror(new Localdrive(appRunPath)).done()
   }
-  if (isWindows) {
+  if (isWindows && !windowsUseSquirrel) {
     await t.execution(trustMsixCertificate(appBuildPath), 'trusted MSIX certificate successfully')
 
     const MSIXManager = require('msix-manager')
@@ -536,6 +624,13 @@ test('should update from prerelease to release', async (t) => {
     t.teardown(() => removeMsixPackage('Updater'))
 
     appRunPath = getInstalledMsixExe('Updater')
+  }
+  if (isWindows && windowsUseSquirrel) {
+    const child = spawn(appBuildPath, ['/S'], { stdio: 'ignore' })
+    await t.execution(helper.waitForExit(child), 'installed Squirrel app successfully')
+    t.teardown(() => removeSquirrelPackage('Updater'))
+    await new Promise((resolve) => setTimeout(resolve, 4000))
+    appRunPath = getInstalledSquirrelExe('Updater')
   }
 
   t.comment('run pear-build')
@@ -564,7 +659,7 @@ test('should update from prerelease to release', async (t) => {
       JSON.stringify(pkg, null, 2),
       'utf8'
     )
-    if (isWindows) {
+    if (isWindows && !windowsUseSquirrel) {
       const forgePath = path.join(app, 'forge.config.js')
       const forgeContent = await fs.promises.readFile(forgePath, 'utf8')
       await fs.promises.writeFile(
@@ -584,8 +679,7 @@ test('should update from prerelease to release', async (t) => {
       fs.promises.rm(path.join(app, 'out'), { recursive: true }),
       'removed old build successfully'
     )
-    const child = spawn(npm, ['run', 'make'], { cwd: app, shell: true })
-    await t.execution(helper.waitForExit(child), 'app rebuilt successfully')
+    await t.execution(runMake(app), 'app rebuilt successfully')
   }
   if (isLinux) {
     await fs.promises.rename(
@@ -648,14 +742,20 @@ test('should update from prerelease to release', async (t) => {
   t.comment('wait for exit')
   await t.execution(await exit, 'app exited successfully')
 
-  if (isWindows) {
+  if (isWindows && !windowsUseSquirrel) {
     t.comment('give time for MSIX installer to finish')
+    await new Promise((resolve) => setTimeout(resolve, 5000))
+  }
+  if (isWindows && windowsUseSquirrel) {
+    t.comment('give time for Squirrel installer to finish')
     await new Promise((resolve) => setTimeout(resolve, 5000))
   }
 
   t.comment('rerun app')
   if (isWindows) {
-    appRunPath = getInstalledMsixExe('Updater')
+    appRunPath = windowsUseSquirrel
+      ? getInstalledSquirrelExe('Updater')
+      : getInstalledMsixExe('Updater')
     runParams.execPath = appRunPath
   }
   run = spawn(runParams.execPath, runParams.args, {
@@ -680,3 +780,14 @@ test('should update from prerelease to release', async (t) => {
 
   await t.execution(await exit, 'app exited successfully')
 })
+if (isWindows) {
+  appBuildPath = resolveWindowsBuildPath(app, '1.0.1')
+}
+
+if (isWindows) {
+  appBuildPath = resolveWindowsBuildPath(app, '1.0.1')
+}
+
+if (isWindows) {
+  appBuildPath = resolveWindowsBuildPath(app, '1.0.0')
+}

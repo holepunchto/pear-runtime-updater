@@ -32,8 +32,14 @@ jobs:
 
       - name: Run Windows MSIX e2e test
         if: matrix.platform == 'win32'
-        run: npm run test:node:e2e
+        shell: pwsh
+        run: |
+          $env:PRU_WINDOWS_E2E_MODE = "msix"
+          npm run test:node:e2e
 
-      - name: Run Windows Squirrel manager test
+      - name: Run Windows Squirrel e2e test
         if: matrix.platform == 'win32'
-        run: npm run test:squirrel:node
+        shell: pwsh
+        run: |
+          $env:PRU_WINDOWS_E2E_MODE = "squirrel"
+          npm run test:node:e2e

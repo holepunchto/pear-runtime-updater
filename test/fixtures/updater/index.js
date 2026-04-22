@@ -6,6 +6,10 @@ const Hyperswarm = require('hyperswarm')
 const Updater = require('pear-runtime-updater')
 const pkg = require('./package.json')
 const { version, upgrade } = pkg
+const windowsMode = isWindows
+  ? String(process.env.PRU_WINDOWS_E2E_MODE || 'msix').toLowerCase()
+  : ''
+const windowsUseSquirrel = isWindows && windowsMode === 'squirrel'
 
 const CI = !!process.env.CI
 if (CI) {
@@ -70,7 +74,13 @@ async function startUpdater() {
     updates: true,
     version,
     upgrade,
-    name: isLinux ? 'Updater.AppImage' : isMac ? 'Updater.app' : 'Updater.msix',
+    name: isLinux
+      ? 'Updater.AppImage'
+      : isMac
+        ? 'Updater.app'
+        : windowsUseSquirrel
+          ? 'RELEASES'
+          : 'Updater.msix',
     store
   })
 

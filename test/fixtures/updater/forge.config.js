@@ -23,11 +23,19 @@ module.exports = {
       platforms: ['linux']
     },
     {
-      name: '@electron-forge/maker-msix',
+      name:
+        process.env.UPDATER_WINDOWS_MAKER === 'squirrel'
+          ? '@electron-forge/maker-squirrel'
+          : '@electron-forge/maker-msix',
       platforms: ['win32'],
-      config: {
-        manifestVariables: { publisher: 'Holepunch' }
-      }
+      config:
+        process.env.UPDATER_WINDOWS_MAKER === 'squirrel'
+          ? {
+              name: 'Updater'
+            }
+          : {
+              manifestVariables: { publisher: 'Holepunch' }
+            }
     }
   ],
 
