@@ -374,6 +374,57 @@ test('should not update when remote version is older', async function (t) {
   }
 })
 
+test('should emit error if update not found', async function (t) {
+  t.plan(1)
+  t.timeout(60_000)
+
+  const testnet = await helper.createTestnet()
+  t.teardown(() => testnet.destroy())
+  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
+
+  const stagerDir = await tmpDir(t)
+  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
+  await stager.ready()
+  t.teardown(() => stager.close())
+
+  const dir = await tmpDir(t)
+  const appFile = path.join(dir, 'test.txt')
+  await fs.promises.writeFile(appFile, 'v1')
+
+  const store = new Corestore(path.join(dir, 'corestore'))
+  const updater = new Updater({
+    dir,
+    app: appFile,
+    version: '1.0.0',
+    upgrade: stager.link,
+    name: 'test.txt',
+    store
+  })
+  await updater.ready()
+  t.teardown(() => updater.close())
+
+  const staging = await tmpDir(t)
+  const local = new Localdrive(staging)
+  await local.put('/package.json', Buffer.from(JSON.stringify({ version: '2.0.0' })))
+  await local.put(`/by-arch/${host}/app/not_test.txt`, Buffer.from('v2'))
+  await local.close()
+  await stager.stage(staging)
+  await stager.seed()
+
+  const updated = new Promise((resolve, reject) => {
+    updater.on('error', reject)
+    updater.on('updating', resolve)
+  })
+
+  const swarm = new Hyperswarm({ bootstrap })
+  t.teardown(async () => await swarm.destroy())
+  swarm.on('connection', (c) => store.replicate(c))
+  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
+  await swarm.flush()
+
+  await t.exception(updated, /update not found/)
+})
+
 test('should update from prerelease to release', async function (t) {
   t.timeout(60_000)
 
