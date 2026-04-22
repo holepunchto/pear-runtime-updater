@@ -55,7 +55,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
         force: true
       })
 
-      this._debouncedUpdate()
+      this._debouncedUpdate().catch((err) => this.emit('error', err))
       this.drive.core.on('append', () => this._debouncedUpdate().catch((err) => this.emit('error', err)))
     }
   }
