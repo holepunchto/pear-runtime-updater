@@ -12,6 +12,14 @@ module.exports = {
   host: `${platform}-${arch}`,
   createTestnet: createTestnet,
 
+  subprocessTeardown(teardown) {
+    return (proc) =>
+      teardown(() => {
+        if (!proc || proc.killed) return
+        proc.kill()
+      })
+  },
+
   Stager: class Stager extends ReadyResource {
     constructor({ dir, bootstrap }) {
       super()
