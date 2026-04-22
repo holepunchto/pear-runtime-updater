@@ -85,7 +85,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
   async _update() {
     if (this.updating || !this.updates) return
-    this.updating = true
 
     await this.drive.update()
 
@@ -110,7 +109,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     }
 
     if (!remote || current.compare(remote) >= 0) {
-      this.updating = false
       this.checkout = null
       await co.close()
       if (this.drive.core.length > length) this._updateBackground()
@@ -119,6 +117,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
     const local = new Localdrive(next)
 
+    this.updating = true
     this.emit('updating')
     const prefix = prefixFor(host, this.name)
     for await (const data of co.mirror(local, { prefix })) {
