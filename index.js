@@ -8,6 +8,7 @@ const link = require('pear-link')
 const hid = require('hypercore-id-encoding')
 const { platform, arch, isWindows } = require('which-runtime')
 const semver = require('bare-semver')
+const debounceify = require('debounceify')
 const host = platform + '-' + arch
 
 module.exports = class PearRuntimeUpdater extends ReadyResource {
@@ -38,6 +39,8 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.prefetched = false
     this.updating = false
     this.updated = false
+
+    this._update = debounceify(this._update.bind(this))
 
     this.ready().catch(noop)
   }
@@ -84,7 +87,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
   }
 
   async _update() {
-    if (this.updating || !this.updates) return
+    if (!this.updates) return
 
     await this.drive.update()
 
@@ -111,7 +114,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     if (!remote || current.compare(remote) >= 0) {
       this.checkout = null
       await co.close()
-      if (this.drive.core.length > length) this._updateBackground()
       return
     }
 
@@ -134,8 +136,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.updating = false
     this.updated = true
     this.emit('updated')
-
-    if (this.drive.core.length > length) this._updateBackground()
   }
 
   async _prefetchLatest() {
