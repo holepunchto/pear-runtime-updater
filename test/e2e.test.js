@@ -82,9 +82,11 @@ function trustMsixCertificate(msixPath) {
 }
 
 function runMake(cwd) {
-  const child = spawn(npm, ['run', 'make'], {
+  const script = windowsUseSquirrel ? 'make:win32:squirrel' : 'make'
+  const child = spawn(npm, ['run', script], {
     cwd,
     shell: true,
+    stdio: 'inherit',
     env: {
       ...process.env,
       UPDATER_WINDOWS_MAKER: windowsUseSquirrel ? 'squirrel' : 'msix',

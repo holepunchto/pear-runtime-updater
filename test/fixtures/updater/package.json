@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "make": "electron-forge make"
+    "make": "electron-forge make",
+    "make:win32:squirrel": "electron-forge make --platform=win32 --targets @electron-forge/maker-squirrel"
   },
   "devDependencies": {
     "@electron-forge/cli": "^7.11.1",

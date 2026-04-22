@@ -31,7 +31,10 @@ module.exports = {
       config:
         process.env.UPDATER_WINDOWS_MAKER === 'squirrel'
           ? {
-              name: 'Updater'
+              name: 'updater',
+              authors: 'Holepunch',
+              setupExe: 'Updater-Setup.exe',
+              noMsi: true
             }
           : {
               manifestVariables: { publisher: 'Holepunch' }
