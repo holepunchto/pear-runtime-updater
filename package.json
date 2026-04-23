@@ -1,6 +1,6 @@
 {
   "name": "pear-runtime-updater",
-  "version": "3.0.6",
+  "version": "3.0.7",
   "description": "Listens for OTA Pear App updates",
   "license": "Apache-2.0",
   "author": "Holepunch Inc",
