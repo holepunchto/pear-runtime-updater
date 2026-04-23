@@ -94,8 +94,10 @@ async function startUpdater() {
 
     await updater.applyUpdate()
 
-    await cleanup()
-    app.quit()
+    if (!quitVersion || updater.version === quitVersion) {
+      await cleanup()
+      app.quit()
+    }
   })
 
   const quitVersion = positionalArgs?.[2]
