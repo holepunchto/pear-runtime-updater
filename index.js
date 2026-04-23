@@ -118,8 +118,16 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     const local = new Localdrive(next)
 
     const prefix = prefixFor(host, this.name)
-    const exists = await co.get(prefix)
-    if (!exists) throw new Error('update not found')
+    // Binary may be a file or a directory bundle
+    // Entries exist only for files, so try exact path first, then iterate under it
+    let hasContent = (await co.entry(prefix)) !== null
+    if (!hasContent) {
+      for await (const _entry of co.list(prefix)) {
+        hasContent = true
+        break
+      }
+    }
+    if (!hasContent) throw new Error('update not found')
     this.updating = true
     this.emit('updating')
     for await (const data of co.mirror(local, { prefix })) {
