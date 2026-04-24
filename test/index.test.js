@@ -322,6 +322,71 @@ test('should detect update when remote version is newer', async function (t) {
   }
 })
 
+test('should detect update when appling is folder (MacOS)', async function (t) {
+  t.timeout(60_000)
+
+  const testnet = await helper.createTestnet()
+  t.teardown(() => testnet.destroy())
+  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
+
+  const stagerDir = await tmpDir(t)
+  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
+  await stager.ready()
+  t.teardown(() => stager.close())
+
+  const staging = await tmpDir(t)
+  const local = new Localdrive(staging)
+  await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.0' })))
+  await local.put(`/by-arch/${host}/app/test.app/test.txt`, Buffer.from('v1'))
+  await local.close()
+  await stager.stage(staging)
+  await stager.seed()
+
+  const dir = await tmpDir(t)
+  const appDir = path.join(dir, 'test.app')
+  await fs.promises.mkdir(appDir, { recursive: true })
+  const appFile = path.join(appDir, 'test.txt')
+  await fs.promises.writeFile(appFile, 'v1')
+
+  const store = new Corestore(path.join(dir, 'corestore'))
+  const updater = new Updater({
+    dir,
+    app: appDir,
+    version: '1.0.0',
+    upgrade: stager.link,
+    name: 'test.app',
+    store
+  })
+  await updater.ready()
+  t.teardown(() => updater.close())
+
+  const swarm = new Hyperswarm({ bootstrap })
+  swarm.on('connection', (c) => store.replicate(c))
+  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
+  await swarm.flush()
+  t.teardown(() => swarm.destroy())
+
+  t.is(updater.updated, false)
+
+  const updated = new Promise((resolve) => updater.on('updated', resolve))
+
+  const staging2 = await tmpDir(t)
+  const local2 = new Localdrive(staging2)
+  await local2.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.1' })))
+  await local2.put(`/by-arch/${host}/app/test.app/test.txt`, Buffer.from('v2'))
+  await local2.close()
+  await stager.stage(staging2)
+
+  await updated
+  t.is(updater.updated, true)
+
+  if (!isWindows) {
+    await updater.applyUpdate()
+    const content = await fs.promises.readFile(appFile, 'utf8')
+    t.is(content, 'v2', 'file was swapped to new version')
+  }
+})
+
 test('should not update when remote version is older', async function (t) {
   t.timeout(60_000)
 
