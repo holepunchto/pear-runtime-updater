@@ -71,7 +71,8 @@ async function startUpdater() {
     version,
     upgrade,
     name: isLinux ? 'Updater.AppImage' : isMac ? 'Updater.app' : 'Updater.msix',
-    store
+    store,
+    delay: 0
   })
 
   await updater.ready()
