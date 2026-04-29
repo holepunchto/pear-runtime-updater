@@ -50,7 +50,8 @@ test('should prefetch the latest version on first run', async function (t) {
     name: appName,
     store,
     upgrade: stager.link,
-    version: '1.0.0'
+    version: '1.0.0',
+    delay: 0
   })
   await updater.ready()
   t.teardown(() => updater.close())
@@ -133,7 +134,8 @@ test('should prefetch the latest version after partial metadata sync', async fun
     name: appName,
     store,
     upgrade: stager.link,
-    version: '1.0.0'
+    version: '1.0.0',
+    delay: 0
   })
   await updater.ready()
   t.teardown(() => updater.close())
@@ -183,7 +185,8 @@ test('should continue updating when prefetch fails', async function (t) {
     version: '1.0.0',
     upgrade: stager.link,
     name: 'test.txt',
-    store
+    store,
+    delay: 0
   })
   await updater.ready()
   t.teardown(() => updater.close())
@@ -235,7 +238,8 @@ test('should not prefetch before updating to a newer version', async function (t
     version: '1.0.0',
     upgrade: stager.link,
     name: 'test.txt',
-    store
+    store,
+    delay: 0
   })
   await updater.ready()
   t.teardown(() => updater.close())
@@ -290,7 +294,8 @@ test('should detect update when remote version is newer', async function (t) {
     version: '1.0.0',
     upgrade: stager.link,
     name: 'test.txt',
-    store
+    store,
+    delay: 0
   })
   await updater.ready()
   t.teardown(() => updater.close())
@@ -355,7 +360,8 @@ test('should detect update when appling is folder (MacOS)', async function (t) {
     version: '1.0.0',
     upgrade: stager.link,
     name: 'test.app',
-    store
+    store,
+    delay: 0
   })
   await updater.ready()
   t.teardown(() => updater.close())
@@ -418,7 +424,8 @@ test('should not update when remote version is older', async function (t) {
     version: '2.0.0',
     upgrade: stager.link,
     name: 'test.txt',
-    store
+    store,
+    delay: 0
   })
   await updater.ready()
   t.teardown(() => updater.close())
@@ -463,7 +470,8 @@ test('should emit error if update not found', async function (t) {
     version: '1.0.0',
     upgrade: stager.link,
     name: 'test.txt',
-    store
+    store,
+    delay: 0
   })
   await updater.ready()
   t.teardown(() => updater.close())
@@ -521,7 +529,8 @@ test('should update from prerelease to release', async function (t) {
     version: '1.0.0-rc.1',
     upgrade: stager.link,
     name: 'test.txt',
-    store
+    store,
+    delay: 0
   })
   await updater.ready()
   t.teardown(() => updater.close())
@@ -543,6 +552,71 @@ test('should update from prerelease to release', async function (t) {
     const content = await fs.promises.readFile(appFile, 'utf8')
     t.is(content, 'release', 'file was swapped')
   }
+})
+
+test.solo('should delay update', async (t) => {
+  t.timeout(60_000)
+  t.plan(2)
+
+  const testnet = await helper.createTestnet()
+  t.teardown(() => testnet.destroy())
+  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
+
+  const stagerDir = await tmpDir(t)
+  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
+  await stager.ready()
+  t.teardown(() => stager.close())
+
+  const staging = await tmpDir(t)
+  const local = new Localdrive(staging)
+  await local.put('/package.json', Buffer.from(JSON.stringify({ version: '2.0.0' })))
+  await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('old'))
+  await local.close()
+  await stager.stage(staging)
+  await stager.seed()
+
+  const dir = await tmpDir(t)
+  const appFile = path.join(dir, 'test.txt')
+  await fs.promises.writeFile(appFile, 'current')
+  const delay = 5000
+
+  const store = new Corestore(path.join(dir, 'corestore'))
+  const updater = new Updater({
+    dir,
+    app: appFile,
+    version: '1.0.0',
+    upgrade: stager.link,
+    name: 'test.txt',
+    store,
+    delay
+  })
+  await updater.ready()
+
+  let start = 0
+  let updateStart = 0
+
+  updater.drive.core.on('append', () => {
+    start = Date.now()
+  })
+
+  t.teardown(() => updater.close())
+
+  const swarm = new Hyperswarm({ bootstrap })
+  swarm.on('connection', (c) => store.replicate(c))
+  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
+  await swarm.flush()
+  t.teardown(() => swarm.destroy())
+
+  let randomDelay
+  updater.on('update-scheduled', (n) => {
+    randomDelay = n
+    t.ok(n > 0 && n < 5000)
+  })
+
+  updater.on('updating', () => {
+    updateStart = Date.now()
+    t.ok(updateStart - start >= randomDelay, 'update delays ' + randomDelay + 'ms')
+  })
 })
 
 function noop() {}
