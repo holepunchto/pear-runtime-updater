@@ -39,6 +39,8 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.prefetched = false
     this.updating = false
     this.updated = false
+    this.applied = false
+    this.remoteVersion = null
 
     this._debouncedUpdate = debounceify(this._update.bind(this))
 
@@ -73,7 +75,10 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     if (!this.updated || this.applied || !this.bundled) return
     this.applied = true
 
-    const nextApp = path.join(this.next, 'by-arch', host, 'app', this.name)
+    const next = this.next
+    const remoteVersion = this.remoteVersion
+
+    const nextApp = path.join(next, 'by-arch', host, 'app', this.name)
     if (isWindows) {
       const MSIXManager = require('msix-manager') // require must be here for platform compatibility
       const manager = new MSIXManager()
@@ -81,7 +86,12 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     } else {
       await fsx.swap(nextApp, this.app)
     }
-    await fs.promises.rm(this.next, { recursive: true, force: true })
+    await fs.promises.rm(next, { recursive: true, force: true })
+
+    this.version = remoteVersion.toString()
+    this.updated = false
+    this.next = null
+    this.remoteVersion = null
   }
 
   async _update() {
@@ -140,9 +150,11 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.checkout = null
     this.length = length
     this.next = next
+    this.remoteVersion = remote
 
     this.updating = false
     this.updated = true
+    this.applied = false
     this.emit('updated')
   }
 
