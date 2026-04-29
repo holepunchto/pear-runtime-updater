@@ -554,7 +554,7 @@ test('should update from prerelease to release', async function (t) {
   }
 })
 
-test.solo('should delay update', async (t) => {
+test('should delay update', async (t) => {
   t.timeout(60_000)
   t.plan(2)
 
