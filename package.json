@@ -69,5 +69,19 @@
     "prettier": "^3.8.1",
     "prettier-config-holepunch": "^2.0.0",
     "test-tmp": "^1.4.0"
-  }
+  },
+  "directories": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/holepunchto/pear-runtime-updater.git"
+  },
+  "keywords": [],
+  "type": "commonjs",
+  "types": "./index.d.ts",
+  "bugs": {
+    "url": "https://github.com/holepunchto/pear-runtime-updater/issues"
+  },
+  "homepage": "https://github.com/holepunchto/pear-runtime-updater#readme"
 }
