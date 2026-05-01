@@ -40,6 +40,12 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.updating = false
     this.updated = false
 
+    this._defaultDelay = 3_600_000 // defaults to 1h
+    this._delay = Math.floor(
+      Math.random() * (Number.isInteger(opts.delay) ? opts.delay : this._defaultDelay)
+    )
+    this._scheduledUpdate = null
+
     this._debouncedUpdate = debounceify(this._update.bind(this))
 
     this.ready().catch(noop)
@@ -56,9 +62,13 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
       })
 
       this._debouncedUpdate().catch((err) => this.emit('error', err))
-      this.drive.core.on('append', () =>
-        this._debouncedUpdate().catch((err) => this.emit('error', err))
-      )
+      this.drive.core.on('append', () => {
+        if (this._scheduledUpdate !== null) clearTimeout(this._scheduledUpdate) // cancel old pending updates before scheduling new one
+        this._scheduledUpdate = setTimeout(() => {
+          this._debouncedUpdate().catch((err) => this.emit('error', err))
+        }, this._delay)
+        this.emit('update-scheduled', this._delay)
+      })
     }
   }
 
@@ -67,6 +77,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
     if (!this.updates) return
     if (this.checkout !== null) await this.checkout.close()
+    if (this._scheduledUpdate) clearTimeout(this._scheduledUpdate)
   }
 
   async applyUpdate() {

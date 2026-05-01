@@ -41,6 +41,7 @@ const updater = new PearRuntimeUpdater({
 
 await updater.ready()
 
+updater.on('update-scheduled', (delay) => console.log('Update will start in', delay))
 updater.on('updating', () => console.log('Update downloading…'))
 updater.on('updated', async () => {
   console.log('Update ready')
@@ -71,6 +72,7 @@ goodbye(async () => {
 - Appends update content via [Hyperdrive](https://github.com/holepunchto/hyperdrive)
 - Emits when an update is in progress, update diffs and when it’s ready
 - `applyUpdate()` to atomic swap the new build (bundled apps; macOS/Linux)
+- Default random update delay to avoid seeder overload on new releases
 
 ## API
 
@@ -84,6 +86,11 @@ goodbye(async () => {
 - `opts.app` – (optional) Path to the app bundle (for bundled apps; used with `applyUpdate()`).
 - `opts.bundled` – (optional) Whether the app is bundled. Defaults to `!!opts.app`.
 - `opts.updates` – (optional) Set to false to opt out of updates.
+- `opts.delay` – (optional) Upper bound (in ms) for the randomized update mirror delay. Defaults to 3_600_000 (60 minutes).
+
+#### `updater.on('update-scheduled')`
+
+Emitted when a new upgrade drive length is detected and the update has been scheduled with a random delay.
 
 #### `updater.on('updating')`
 
