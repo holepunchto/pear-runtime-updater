@@ -34,6 +34,9 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.link = link.serialize({ drive: { fork: this.fork, length: this.length, key: this.key } })
     this.drive = new Hyperdrive(this.store, this.key)
 
+    this._start = Date.now()
+    this._bootGracePeriod = 60000
+
     this.next = null
     this.checkout = null
     this.prefetched = false
@@ -61,12 +64,16 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
         force: true
       })
 
-      await this._debouncedUpdate().catch((err) => this.emit('error', err))
+      this._debouncedUpdate().catch((err) => this.emit('error', err))
       this.drive.core.on('append', () => {
         if (this._scheduledUpdate !== null) clearTimeout(this._scheduledUpdate) // cancel old pending updates before scheduling new one
-        this._scheduledUpdate = setTimeout(async () => {
-          await this._debouncedUpdate().catch((err) => this.emit('error', err))
-        }, this._delay)
+        const recentBoot = Date.now() - this._start <= this._bootGracePeriod
+        this._scheduledUpdate = setTimeout(
+          () => {
+            this._debouncedUpdate().catch((err) => this.emit('error', err))
+          },
+          recentBoot ? 0 : this._delay
+        )
         this.emit('update-scheduled', this._delay)
       })
     }
