@@ -592,13 +592,6 @@ test('should delay update', async (t) => {
   })
   await updater.ready()
 
-  let start = 0
-  let updateStart = 0
-
-  updater.drive.core.on('append', () => {
-    start = Date.now()
-  })
-
   t.teardown(() => updater.close())
 
   const swarm = new Hyperswarm({ bootstrap })
