@@ -64,7 +64,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
       await this._debouncedUpdate().catch((err) => this.emit('error', err))
       this.drive.core.on('append', () => {
         if (this._scheduledUpdate !== null) clearTimeout(this._scheduledUpdate) // cancel old pending updates before scheduling new one
-        this._scheduledUpdate = setTimeout(() => {
+        this._scheduledUpdate = setTimeout(async () => {
           await this._debouncedUpdate().catch((err) => this.emit('error', err))
         }, this._delay)
         this.emit('update-scheduled', this._delay)
