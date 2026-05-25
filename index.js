@@ -38,6 +38,9 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this._bootGracePeriod = 60000
 
     this.next = null
+    this.nextVersion = null
+    this.nextAppName = null
+    this.nextIsBin = false
     this.checkout = null
     this.prefetched = false
     this.updating = false
@@ -91,11 +94,16 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     if (!this.updated || this.applied || !this.bundled) return
     this.applied = true
 
-    const nextApp = path.join(this.next, 'by-arch', host, 'app', this.name)
+    const nextAppName = this.nextAppName || this.name
+    const nextApp = path.join(this.next, 'by-arch', host, 'app', nextAppName)
     if (isWindows) {
-      const MSIXManager = require('msix-manager') // require must be here for platform compatibility
-      const manager = new MSIXManager()
-      await manager.addPackage(nextApp, { forceUpdateFromAnyVersion: true })
+      if (this.nextIsBin) {
+        await this._applyWindowsExecutableUpdate(nextApp)
+      } else {
+        const MSIXManager = require('msix-manager') // require must be here for platform compatibility
+        const manager = new MSIXManager()
+        await manager.addPackage(nextApp, { forceUpdateFromAnyVersion: true })
+      }
     } else {
       await fsx.swap(nextApp, this.app)
     }
@@ -114,10 +122,11 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
     this.checkout = co
 
-    const manifest = await co.get('/package.json')
+    const manifestBuffer = await co.get('/package.json')
+    const manifest = manifestBuffer ? JSON.parse(manifestBuffer) : null
 
     const current = semver.Version.parse(this.version)
-    const remote = manifest ? semver.Version.parse(JSON.parse(manifest).version) : null
+    const remote = manifest ? semver.Version.parse(manifest.version) : null
 
     if (remote && current.compare(remote) === 0 && this.bundled && !this.prefetched) {
       try {
@@ -135,7 +144,9 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
     const local = new Localdrive(next)
 
-    const prefix = prefixFor(host, this.name)
+    const isBin = isWindows && hasBin(manifest)
+    const appName = appNameFor(this.name, isBin)
+    const prefix = prefixFor(host, appName)
     // Binary may be a file or a directory bundle
     // Entries exist only for files, so try exact path first, then iterate under it
     let hasContent = (await co.entry(prefix)) !== null
@@ -158,6 +169,9 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.checkout = null
     this.length = length
     this.next = next
+    this.nextVersion = manifest.version
+    this.nextAppName = appName
+    this.nextIsBin = isBin
 
     this.updating = false
     this.updated = true
@@ -169,7 +183,9 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     if (!length) return
 
     const co = this.drive.checkout(length)
-    const prefix = prefixFor(host, this.name)
+    const manifestBuffer = await co.get('/package.json')
+    const manifest = manifestBuffer ? JSON.parse(manifestBuffer) : null
+    const prefix = prefixFor(host, appNameFor(this.name, isWindows && hasBin(manifest)))
 
     try {
       if (!(await co.has(prefix))) {
@@ -181,10 +197,60 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
     this.prefetched = true
   }
+
+  async _applyWindowsExecutableUpdate(nextApp) {
+    if (!this.app) throw new Error('app path required')
+    if (!this.nextVersion) throw new Error('next version required')
+
+    const target = path.resolve(this.app)
+    const ext = path.extname(target)
+    const base = path.basename(target, ext)
+    const dir = path.dirname(target)
+    const previous = path.join(dir, `${base}-${this.version}${ext}`)
+    const incoming = path.join(dir, `${base}-${this.nextVersion}${ext}`)
+
+    await fs.promises.copyFile(nextApp, incoming)
+
+    try {
+      await fs.promises.rm(previous, { force: true })
+      await fs.promises.rename(target, previous)
+      await fs.promises.rename(incoming, target)
+    } catch (err) {
+      if (!(await exists(target)) && (await exists(previous))) {
+        try {
+          await fs.promises.rename(previous, target)
+        } catch {}
+      }
+      throw err
+    }
+  }
 }
 
 function prefixFor(host, name) {
   return `/by-arch/${host}/app/${name}`
+}
+
+function appNameFor(name, isBin) {
+  if (!isWindows) return name
+  if (isBin) return withExtension(name, '.exe')
+  return withExtension(name, '.msix')
+}
+
+function hasBin(manifest) {
+  return !!(manifest && Object.prototype.hasOwnProperty.call(manifest, 'bin'))
+}
+
+function withExtension(name, ext) {
+  return path.extname(name) ? name : name + ext
+}
+
+async function exists(filename) {
+  try {
+    await fs.promises.access(filename)
+    return true
+  } catch {
+    return false
+  }
 }
 
 function noop() {}
