@@ -39,7 +39,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
     this.next = null
     this.nextVersion = null
-    this.nextAppName = null
     this.nextIsBin = false
     this.checkout = null
     this.prefetched = false
@@ -94,8 +93,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     if (!this.updated || this.applied || !this.bundled) return
     this.applied = true
 
-    const nextAppName = this.nextAppName || this.name
-    const nextApp = path.join(this.next, 'by-arch', host, 'app', nextAppName)
+    const nextApp = path.join(this.next, 'by-arch', host, 'app', this.name)
     if (isWindows) {
       if (this.nextIsBin) {
         await this._applyWindowsExecutableUpdate(nextApp)
@@ -145,8 +143,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     const local = new Localdrive(next)
 
     const isBin = isWindows && hasBin(manifest)
-    const appName = appNameFor(this.name, isBin)
-    const prefix = prefixFor(host, appName)
+    const prefix = prefixFor(host, this.name)
     // Binary may be a file or a directory bundle
     // Entries exist only for files, so try exact path first, then iterate under it
     let hasContent = (await co.entry(prefix)) !== null
@@ -170,7 +167,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.length = length
     this.next = next
     this.nextVersion = manifest.version
-    this.nextAppName = appName
     this.nextIsBin = isBin
 
     this.updating = false
@@ -185,7 +181,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     const co = this.drive.checkout(length)
     const manifestBuffer = await co.get('/package.json')
     const manifest = manifestBuffer ? JSON.parse(manifestBuffer) : null
-    const prefix = prefixFor(host, appNameFor(this.name, isWindows && hasBin(manifest)))
+    const prefix = prefixFor(host, this.name)
 
     try {
       if (!(await co.has(prefix))) {
@@ -230,18 +226,8 @@ function prefixFor(host, name) {
   return `/by-arch/${host}/app/${name}`
 }
 
-function appNameFor(name, isBin) {
-  if (!isWindows) return name
-  if (isBin) return withExtension(name, '.exe')
-  return withExtension(name, '.msix')
-}
-
 function hasBin(manifest) {
   return !!(manifest && Object.prototype.hasOwnProperty.call(manifest, 'bin'))
-}
-
-function withExtension(name, ext) {
-  return path.extname(name) ? name : name + ext
 }
 
 async function exists(filename) {
