@@ -179,8 +179,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     if (!length) return
 
     const co = this.drive.checkout(length)
-    const manifestBuffer = await co.get('/package.json')
-    const manifest = manifestBuffer ? JSON.parse(manifestBuffer) : null
     const prefix = prefixFor(host, this.name)
 
     try {
@@ -198,10 +196,9 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     if (!this.app) throw new Error('app path required')
     if (!this.nextVersion) throw new Error('next version required')
 
-    const target = path.resolve(this.app)
-    const ext = path.extname(target)
-    const base = path.basename(target, ext)
-    const dir = path.dirname(target)
+    const ext = path.extname(this.app)
+    const base = path.basename(this.app, ext)
+    const dir = path.dirname(this.app)
     const previous = path.join(dir, `${base}-${this.version}${ext}`)
     const incoming = path.join(dir, `${base}-${this.nextVersion}${ext}`)
 
@@ -209,12 +206,12 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
     try {
       await fs.promises.rm(previous, { force: true })
-      await fs.promises.rename(target, previous)
-      await fs.promises.rename(incoming, target)
+      await fs.promises.rename(this.app, previous)
+      await fs.promises.rename(incoming, this.app)
     } catch (err) {
-      if (!(await exists(target)) && (await exists(previous))) {
+      if (!(await exists(this.app)) && (await exists(previous))) {
         try {
-          await fs.promises.rename(previous, target)
+          await fs.promises.rename(previous, this.app)
         } catch {}
       }
       throw err
