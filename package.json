@@ -58,6 +58,7 @@
   },
   "devDependencies": {
     "@hyperswarm/testnet": "^3.1.4",
+    "bare-build": "^0.5.3",
     "bare-env": "^3.0.0",
     "bare-os": "^3.7.0",
     "bare-subprocess": "^5.2.2",

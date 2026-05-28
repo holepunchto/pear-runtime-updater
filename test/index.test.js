@@ -7,10 +7,14 @@ const Hyperdrive = require('hyperdrive')
 const Hyperswarm = require('hyperswarm')
 const Localdrive = require('localdrive')
 const { platform, arch, isWindows } = require('which-runtime')
+const pearBuild = require('pear-build')
+const bareBuild = require('bare-build')
 const helper = require('./helper')
 const Updater = require('..')
 
 const host = platform + '-' + arch
+const windowsHost = 'win32-' + arch
+const windowsAppOption = 'win32' + arch.charAt(0).toUpperCase() + arch.slice(1) + 'App'
 
 test('should prefetch the latest version on first run', async function (t) {
   t.timeout(120_000)
@@ -327,6 +331,95 @@ test('should detect update when remote version is newer', async function (t) {
   }
 })
 
+test('should apply update for Windows exe build', async function (t) {
+  t.timeout(120_000)
+
+  if (!isWindows) {
+    t.pass('Windows exe updates are Windows-only')
+    return
+  }
+
+  const testnet = await helper.createTestnet()
+  t.teardown(() => testnet.destroy())
+  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
+
+  const stagerDir = await tmpDir(t)
+  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
+  await stager.ready()
+  t.teardown(() => stager.close())
+
+  const appName = 'updater-bare'
+  const exeName = appName + '.exe'
+  const app = await tmpDir(t)
+
+  const v1Exe = await buildWindowsExe(app, appName, '1.0.0')
+  const runDir = await tmpDir(t)
+  const appFile = path.join(runDir, exeName)
+  await fs.promises.copyFile(v1Exe, appFile)
+  const v1 = await fs.promises.readFile(appFile)
+
+  const staging = await tmpDir(t)
+  await pearBuild({
+    package: path.join(app, 'package.json'),
+    [windowsAppOption]: v1Exe,
+    target: staging
+  }).done()
+  await stager.stage(staging)
+  await stager.seed()
+
+  const dir = await tmpDir(t)
+  const store = new Corestore(path.join(dir, 'corestore'))
+  t.teardown(() => store.close())
+
+  const updater = new Updater({
+    dir,
+    app: appFile,
+    version: '1.0.0',
+    upgrade: stager.link,
+    name: exeName,
+    store,
+    delay: 0
+  })
+  await updater.ready()
+  t.teardown(() => updater.close())
+
+  const swarm = new Hyperswarm({ bootstrap })
+  swarm.on('connection', (connection) => store.replicate(connection))
+  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
+  await swarm.flush()
+  t.teardown(() => swarm.destroy())
+
+  t.is(updater.updated, false, 'initial matching version did not update')
+
+  const updated = new Promise((resolve, reject) => {
+    updater.once('updated', resolve)
+    updater.once('error', reject)
+  })
+
+  const v2Exe = await buildWindowsExe(app, appName, '1.0.1')
+  const v2 = await fs.promises.readFile(v2Exe)
+  await fs.promises.rm(staging, { recursive: true, force: true })
+  await pearBuild({
+    package: path.join(app, 'package.json'),
+    [windowsAppOption]: v2Exe,
+    target: staging
+  }).done()
+  await stager.stage(staging)
+
+  await updated
+  t.is(updater.nextIsBin, true, 'bin manifest selected executable update path')
+
+  await updater.applyUpdate()
+
+  t.alike(await fs.promises.readFile(appFile), v2, 'exe was replaced with v2 build')
+  t.alike(
+    await fs.promises.readFile(path.join(runDir, `${appName}-1.0.0.exe`)),
+    v1,
+    'v1 exe was kept as versioned backup'
+  )
+  t.absent(await exists(path.join(runDir, `${appName}-1.0.1.exe`)), 'incoming exe was moved')
+})
+
 test('should detect update when appling is folder (MacOS)', async function (t) {
   t.timeout(60_000)
 
@@ -604,5 +697,49 @@ test('should delay update', async (t) => {
     t.pass()
   })
 })
+
+async function buildWindowsExe(dir, name, version) {
+  await fs.promises.rm(path.join(dir, 'out'), { recursive: true, force: true })
+  await fs.promises.writeFile(
+    path.join(dir, 'package.json'),
+    JSON.stringify(
+      {
+        name,
+        productName: name,
+        version,
+        bin: 'bin.js',
+        main: 'bin.js'
+      },
+      null,
+      2
+    )
+  )
+  await fs.promises.writeFile(
+    path.join(dir, 'bin.js'),
+    "const pkg = require('./package.json')\nconsole.log(`${pkg.name} ${pkg.version}`)\n"
+  )
+
+  const out = path.join(dir, 'out', windowsHost)
+  for await (const _ of bareBuild(path.join(dir, 'bin.js'), {
+    base: dir,
+    hosts: [windowsHost],
+    name,
+    out,
+    standalone: true
+  })) {
+    // drain build output
+  }
+
+  return path.join(out, name + '.exe')
+}
+
+async function exists(filename) {
+  try {
+    await fs.promises.access(filename)
+    return true
+  } catch {
+    return false
+  }
+}
 
 function noop() {}
