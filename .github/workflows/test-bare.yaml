@@ -24,7 +24,7 @@ jobs:
       - uses: holepunchto/actions/bare-base@v1
       - uses: actions/setup-node@v6
         with:
-          node-version: 24.15.0
+          node-version: 24.15.0 # forge failed to package in newer versions
 
       - name: Install fixture dependencies
         shell: bash

@@ -331,13 +331,8 @@ test('should detect update when remote version is newer', async function (t) {
   }
 })
 
-test('should apply update for Windows exe build', async function (t) {
+test('should apply update for Windows exe build', { skip: !isWindows }, async function (t) {
   t.timeout(120_000)
-
-  if (!isWindows) {
-    t.pass('Windows exe updates are Windows-only')
-    return
-  }
 
   const testnet = await helper.createTestnet()
   t.teardown(() => testnet.destroy())

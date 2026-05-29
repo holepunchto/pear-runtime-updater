@@ -203,7 +203,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     await fs.promises.copyFile(nextApp, incoming)
 
     try {
-      await fs.promises.rm(previous, { force: true })
       await fs.promises.rename(this.app, previous)
       await fs.promises.rename(incoming, this.app)
     } catch (err) {
