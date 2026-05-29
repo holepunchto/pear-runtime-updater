@@ -38,6 +38,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this._bootGracePeriod = 60000
 
     this.next = null
+    this.nextVersion = null
     this.checkout = null
     this.prefetched = false
     this.updating = false
@@ -93,9 +94,15 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
     const nextApp = path.join(this.next, 'by-arch', host, 'app', this.name)
     if (isWindows) {
-      const MSIXManager = require('msix-manager') // require must be here for platform compatibility
-      const manager = new MSIXManager()
-      await manager.addPackage(nextApp, { forceUpdateFromAnyVersion: true })
+      if (this.name.endsWith('.exe')) {
+        await this._applyWindowsExecutableUpdate(nextApp)
+      } else if (this.name.endsWith('.msix')) {
+        const MSIXManager = require('msix-manager') // require must be here for platform compatibility
+        const manager = new MSIXManager()
+        await manager.addPackage(nextApp, { forceUpdateFromAnyVersion: true })
+      } else {
+        throw new Error(`extension of ${this.name} not supported`)
+      }
     } else {
       await fsx.swap(nextApp, this.app)
     }
@@ -114,10 +121,11 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
     this.checkout = co
 
-    const manifest = await co.get('/package.json')
+    const manifestBuffer = await co.get('/package.json')
+    const manifest = manifestBuffer ? JSON.parse(manifestBuffer) : null
 
     const current = semver.Version.parse(this.version)
-    const remote = manifest ? semver.Version.parse(JSON.parse(manifest).version) : null
+    const remote = manifest ? semver.Version.parse(manifest.version) : null
 
     if (remote && current.compare(remote) === 0 && this.bundled && !this.prefetched) {
       try {
@@ -158,6 +166,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.checkout = null
     this.length = length
     this.next = next
+    this.nextVersion = manifest.version
 
     this.updating = false
     this.updated = true
@@ -181,10 +190,44 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
     this.prefetched = true
   }
+
+  async _applyWindowsExecutableUpdate(nextApp) {
+    if (!this.app) throw new Error('app path required')
+    if (!this.nextVersion) throw new Error('next version required')
+
+    const ext = path.extname(this.app)
+    const base = path.basename(this.app, ext)
+    const dir = path.dirname(this.app)
+    const previous = path.join(dir, `${base}-${this.version}${ext}`)
+    const incoming = path.join(dir, `${base}-${this.nextVersion}${ext}`)
+
+    await fs.promises.copyFile(nextApp, incoming)
+
+    try {
+      await fs.promises.rename(this.app, previous)
+      await fs.promises.rename(incoming, this.app)
+    } catch (err) {
+      if (!(await exists(this.app)) && (await exists(previous))) {
+        try {
+          await fs.promises.rename(previous, this.app)
+        } catch {}
+      }
+      throw err
+    }
+  }
 }
 
 function prefixFor(host, name) {
   return `/by-arch/${host}/app/${name}`
+}
+
+async function exists(filename) {
+  try {
+    await fs.promises.access(filename)
+    return true
+  } catch {
+    return false
+  }
 }
 
 function noop() {}
