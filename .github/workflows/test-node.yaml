@@ -26,6 +26,9 @@ jobs:
         with:
           node-version: 24.15.0 # forge failed to package in newer versions
 
+      - name: Install Bare
+        run: npm i -g bare
+
       - name: Install fixture dependencies
         shell: bash
         run: for dir in test/fixtures/*/; do (cd "$dir" && npm install --install-links); done
