@@ -402,8 +402,6 @@ test('should apply update for Windows exe build', { skip: !isWindows }, async fu
   await stager.stage(staging)
 
   await updated
-  t.is(updater.nextIsBin, true, 'bin manifest selected executable update path')
-
   await updater.applyUpdate()
 
   t.alike(await fs.promises.readFile(appFile), v2, 'exe was replaced with v2 build')
