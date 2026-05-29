@@ -39,7 +39,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
     this.next = null
     this.nextVersion = null
-    this.nextIsBin = false
     this.checkout = null
     this.prefetched = false
     this.updating = false
@@ -95,12 +94,14 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
     const nextApp = path.join(this.next, 'by-arch', host, 'app', this.name)
     if (isWindows) {
-      if (this.nextIsBin) {
+      if (this.name.endsWith('.exe')) {
         await this._applyWindowsExecutableUpdate(nextApp)
-      } else {
+      } else if (this.name.endsWith('.msix')) {
         const MSIXManager = require('msix-manager') // require must be here for platform compatibility
         const manager = new MSIXManager()
         await manager.addPackage(nextApp, { forceUpdateFromAnyVersion: true })
+      } else {
+        throw new Error(`extension of ${this.name} not supported`)
       }
     } else {
       await fsx.swap(nextApp, this.app)
@@ -120,11 +121,10 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
     this.checkout = co
 
-    const manifestBuffer = await co.get('/package.json')
-    const manifest = manifestBuffer ? JSON.parse(manifestBuffer) : null
+    const manifest = await co.get('/package.json')
 
     const current = semver.Version.parse(this.version)
-    const remote = manifest ? semver.Version.parse(manifest.version) : null
+    const remote = manifest ? semver.Version.parse(JSON.parse(manifest).version) : null
 
     if (remote && current.compare(remote) === 0 && this.bundled && !this.prefetched) {
       try {
@@ -142,7 +142,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
     const local = new Localdrive(next)
 
-    const isBin = isWindows && hasBin(manifest)
     const prefix = prefixFor(host, this.name)
     // Binary may be a file or a directory bundle
     // Entries exist only for files, so try exact path first, then iterate under it
@@ -167,7 +166,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.length = length
     this.next = next
     this.nextVersion = manifest.version
-    this.nextIsBin = isBin
 
     this.updating = false
     this.updated = true
@@ -221,10 +219,6 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
 function prefixFor(host, name) {
   return `/by-arch/${host}/app/${name}`
-}
-
-function hasBin(manifest) {
-  return !!(manifest && Object.prototype.hasOwnProperty.call(manifest, 'bin'))
 }
 
 async function exists(filename) {
