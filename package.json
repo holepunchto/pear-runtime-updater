@@ -29,6 +29,10 @@
       "bare": "bare-fs",
       "default": "fs"
     },
+    "fs/promises": {
+      "bare": "bare-fs/promises",
+      "default": "fs/promises"
+    },
     "path": {
       "bare": "bare-path",
       "default": "path"
