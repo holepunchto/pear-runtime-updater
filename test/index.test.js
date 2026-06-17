@@ -18,8 +18,6 @@ const windowsAppOption = 'win32' + arch.charAt(0).toUpperCase() + arch.slice(1) 
 test('should prefetch the latest version on first run', async function (t) {
   t.timeout(120_000)
 
-  const stager = await helper.Stager.initialize(t)
-
   const staged = await t.tmp()
   const appName = `updater-${host}`
   const prefix = `/by-arch/${host}/app/${appName}`
@@ -33,6 +31,7 @@ test('should prefetch the latest version on first run', async function (t) {
   )
   await fs.promises.writeFile(path.join(prefixDir, 'bundle.txt'), 'first run payload', 'utf8')
 
+  const stager = await helper.Stager.initialize(t)
   await stager.stage(staged)
   await stager.seed()
 
@@ -72,8 +71,6 @@ test('should prefetch the latest version on first run', async function (t) {
 test('should prefetch the latest version after partial metadata sync', async function (t) {
   t.timeout(120_000)
 
-  const stager = await helper.Stager.initialize(t)
-
   const staged = await t.tmp()
   const appName = `updater-${host}`
   const prefix = `/by-arch/${host}/app/${appName}`
@@ -87,6 +84,7 @@ test('should prefetch the latest version after partial metadata sync', async fun
   )
   await fs.promises.writeFile(path.join(prefixDir, 'bundle.txt'), 'partial sync payload', 'utf8')
 
+  const stager = await helper.Stager.initialize(t)
   await stager.stage(staged)
   await stager.seed()
 
@@ -149,13 +147,13 @@ test('should prefetch the latest version after partial metadata sync', async fun
 test('should continue updating when prefetch fails', async function (t) {
   t.timeout(60_000)
 
-  const stager = await helper.Stager.initialize(t)
-
   const staging = await t.tmp()
   const local = new Localdrive(staging)
   await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.1' })))
   await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('v2'))
   await local.close()
+
+  const stager = await helper.Stager.initialize(t)
   await stager.stage(staging)
   await stager.seed()
 
@@ -195,13 +193,13 @@ test('should continue updating when prefetch fails', async function (t) {
 test('should not prefetch before updating to a newer version', async function (t) {
   t.timeout(60_000)
 
-  const stager = await helper.Stager.initialize(t)
-
   const staging = await t.tmp()
   const local = new Localdrive(staging)
   await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.1' })))
   await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('v2'))
   await local.close()
+
+  const stager = await helper.Stager.initialize(t)
   await stager.stage(staging)
   await stager.seed()
 
@@ -241,13 +239,13 @@ test('should not prefetch before updating to a newer version', async function (t
 test('should detect update when remote version is newer', async function (t) {
   t.timeout(60_000)
 
-  const stager = await helper.Stager.initialize(t)
-
   const staging = await t.tmp()
   const local = new Localdrive(staging)
   await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.0' })))
   await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('v1'))
   await local.close()
+
+  const stager = await helper.Stager.initialize(t)
   await stager.stage(staging)
   await stager.seed()
 
@@ -298,8 +296,6 @@ test('should detect update when remote version is newer', async function (t) {
 test('should apply update for Windows exe build', { skip: !isWindows }, async function (t) {
   t.timeout(120_000)
 
-  const stager = await helper.Stager.initialize(t)
-
   const appName = 'updater-bare'
   const exeName = appName + '.exe'
   const app = await t.tmp()
@@ -316,6 +312,8 @@ test('should apply update for Windows exe build', { skip: !isWindows }, async fu
     [windowsAppOption]: v1Exe,
     target: staging
   }).done()
+
+  const stager = await helper.Stager.initialize(t)
   await stager.stage(staging)
   await stager.seed()
 
@@ -373,13 +371,13 @@ test('should apply update for Windows exe build', { skip: !isWindows }, async fu
 test('should detect update when appling is folder (MacOS)', async function (t) {
   t.timeout(60_000)
 
-  const stager = await helper.Stager.initialize(t)
-
   const staging = await t.tmp()
   const local = new Localdrive(staging)
   await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.0' })))
   await local.put(`/by-arch/${host}/app/test.app/test.txt`, Buffer.from('v1'))
   await local.close()
+
+  const stager = await helper.Stager.initialize(t)
   await stager.stage(staging)
   await stager.seed()
 
@@ -432,13 +430,13 @@ test('should detect update when appling is folder (MacOS)', async function (t) {
 test('should not update when remote version is older', async function (t) {
   t.timeout(60_000)
 
-  const stager = await helper.Stager.initialize(t)
-
   const staging = await t.tmp()
   const local = new Localdrive(staging)
   await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.0' })))
   await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('old'))
   await local.close()
+
+  const stager = await helper.Stager.initialize(t)
   await stager.stage(staging)
   await stager.seed()
 
@@ -479,8 +477,6 @@ test('should emit error if update not found', async function (t) {
   t.plan(1)
   t.timeout(60_000)
 
-  const stager = await helper.Stager.initialize(t)
-
   const dir = await t.tmp()
   const appFile = path.join(dir, 'test.txt')
   await fs.promises.writeFile(appFile, 'v1')
@@ -503,6 +499,8 @@ test('should emit error if update not found', async function (t) {
   await local.put('/package.json', Buffer.from(JSON.stringify({ version: '2.0.0' })))
   await local.put(`/by-arch/${host}/app/not_test.txt`, Buffer.from('v2'))
   await local.close()
+
+  const stager = await helper.Stager.initialize(t)
   await stager.stage(staging)
   await stager.seed()
 
@@ -523,13 +521,13 @@ test('should emit error if update not found', async function (t) {
 test('should update from prerelease to release', async function (t) {
   t.timeout(60_000)
 
-  const stager = await helper.Stager.initialize(t)
-
   const staging = await t.tmp()
   const local = new Localdrive(staging)
   await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.0' })))
   await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('release'))
   await local.close()
+
+  const stager = await helper.Stager.initialize(t)
   await stager.stage(staging)
   await stager.seed()
 
@@ -573,13 +571,13 @@ test('should delay update', async (t) => {
   t.timeout(60_000)
   t.plan(1)
 
-  const stager = await helper.Stager.initialize(t)
-
   const staging = await t.tmp()
   const local = new Localdrive(staging)
   await local.put('/package.json', Buffer.from(JSON.stringify({ version: '2.0.0' })))
   await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('old'))
   await local.close()
+
+  const stager = await helper.Stager.initialize(t)
   await stager.stage(staging)
   await stager.seed()
 
