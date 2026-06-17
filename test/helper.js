@@ -13,10 +13,25 @@ module.exports = {
   createTestnet: createTestnet,
 
   Stager: class Stager extends ReadyResource {
-    constructor({ dir, bootstrap }) {
+    static async initialize(t, { dir, testnet } = {}) {
+      if (!dir) dir = await t.tmp()
+      if (!testnet) {
+        testnet = await createTestnet()
+        t.teardown(() => testnet.destroy())
+      }
+
+      const stager = new this({ dir, testnet })
+      t.teardown(() => stager.close())
+      await stager.ready()
+
+      return stager
+    }
+
+    constructor({ dir, testnet }) {
       super()
       this.dir = dir
-      this.bootstrap = bootstrap
+      this.testnet = testnet
+      this.bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
     }
 
     async _open() {

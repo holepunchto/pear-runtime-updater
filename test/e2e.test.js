@@ -47,19 +47,8 @@ function trustMsixCertificate(msixPath) {
 test('should receive and apply update when update happens while app is running', async (t) => {
   t.timeout(300_000)
 
-  t.comment('create testnet')
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-
-  const stagerDir = await t.tmp()
-
   t.comment('prepare stager')
-  const stager = new helper.Stager({
-    dir: stagerDir,
-    bootstrap: testnet.nodes.map((e) => `${e.host}:${e.port}`)
-  })
-  await stager.ready()
-  t.teardown(() => stager.close())
+  const stager = await helper.Stager.initialize(t)
   const link = stager.link
   t.ok(link, `prepared ${link}`)
 
@@ -138,8 +127,7 @@ test('should receive and apply update when update happens while app is running',
   t.comment('run')
   const runParams = { args: [] }
   const appDir = await t.tmp()
-  const bootstrap = JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`))
-  const baseArgs = [appDir, bootstrap, '1.0.1']
+  const baseArgs = [appDir, stager.bootstrap, '1.0.1']
 
   if (isLinux) {
     // needed because GHA does not support FUSE and SUID sandboxing
@@ -251,19 +239,9 @@ test('should receive and apply update when update happens while app is running',
 test('should receive and apply update when update happens while app is not running', async (t) => {
   t.timeout(300_000)
 
-  t.comment('create testnet')
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-
-  const stagerDir = await t.tmp()
-
   t.comment('prepare stager')
-  const stager = new helper.Stager({
-    dir: stagerDir,
-    bootstrap: testnet.nodes.map((e) => `${e.host}:${e.port}`)
-  })
-  await stager.ready()
-  t.teardown(() => stager.close())
+  const stager = await helper.Stager.initialize(t)
+
   const link = stager.link
   t.ok(link, `prepared ${link}`)
 
@@ -383,8 +361,7 @@ test('should receive and apply update when update happens while app is not runni
   t.comment('run')
   const runParams = { args: [] }
   const appDir = await t.tmp()
-  const bootstrap = JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`))
-  const baseArgs = [appDir, bootstrap, '1.0.1']
+  const baseArgs = [appDir, stager.bootstrap, '1.0.1']
 
   if (isLinux) {
     // needed because GHA does not support FUSE and SUID sandboxing
@@ -454,19 +431,9 @@ test('should receive and apply update when update happens while app is not runni
 test('should update from prerelease to release', async (t) => {
   t.timeout(300_000)
 
-  t.comment('create testnet')
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-
-  const stagerDir = await t.tmp()
-
   t.comment('prepare stager')
-  const stager = new helper.Stager({
-    dir: stagerDir,
-    bootstrap: testnet.nodes.map((e) => `${e.host}:${e.port}`)
-  })
-  await stager.ready()
-  t.teardown(() => stager.close())
+  const stager = await helper.Stager.initialize(t)
+
   const link = stager.link
   t.ok(link, `prepared ${link}`)
 
@@ -610,8 +577,7 @@ test('should update from prerelease to release', async (t) => {
   t.comment('run')
   const runParams = { args: [] }
   const appDir = await t.tmp()
-  const bootstrap = JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`))
-  const baseArgs = [appDir, bootstrap, '1.0.0']
+  const baseArgs = [appDir, stager.bootstrap, '1.0.0']
 
   if (isLinux) {
     // needed because GHA does not support FUSE and SUID sandboxing

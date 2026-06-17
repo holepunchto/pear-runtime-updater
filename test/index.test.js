@@ -18,14 +18,7 @@ const windowsAppOption = 'win32' + arch.charAt(0).toUpperCase() + arch.slice(1) 
 test('should prefetch the latest version on first run', async function (t) {
   t.timeout(120_000)
 
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
-
-  const stagerDir = await t.tmp()
-  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
-  await stager.ready()
-  t.teardown(() => stager.close())
+  const stager = await helper.Stager.initialize(t)
 
   const staged = await t.tmp()
   const appName = `updater-${host}`
@@ -59,7 +52,7 @@ test('should prefetch the latest version on first run', async function (t) {
   await updater.ready()
   t.teardown(() => updater.close())
 
-  const swarm = new Hyperswarm({ bootstrap })
+  const swarm = new Hyperswarm({ bootstrap: stager.bootstrap })
   swarm.on('connection', (connection) => store.replicate(connection))
   t.teardown(() => swarm.destroy())
 
@@ -79,14 +72,7 @@ test('should prefetch the latest version on first run', async function (t) {
 test('should prefetch the latest version after partial metadata sync', async function (t) {
   t.timeout(120_000)
 
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
-
-  const stagerDir = await t.tmp()
-  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
-  await stager.ready()
-  t.teardown(() => stager.close())
+  const stager = await helper.Stager.initialize(t)
 
   const staged = await t.tmp()
   const appName = `updater-${host}`
@@ -110,7 +96,7 @@ test('should prefetch the latest version after partial metadata sync', async fun
     const drive = new Hyperdrive(store, stager.drive.key)
     await drive.ready()
 
-    const swarm = new Hyperswarm({ bootstrap })
+    const swarm = new Hyperswarm({ bootstrap: stager.bootstrap })
     swarm.on('connection', (connection) => store.replicate(connection))
 
     const discovery = swarm.join(drive.core.discoveryKey, {
@@ -143,7 +129,7 @@ test('should prefetch the latest version after partial metadata sync', async fun
   await updater.ready()
   t.teardown(() => updater.close())
 
-  const swarm = new Hyperswarm({ bootstrap })
+  const swarm = new Hyperswarm({ bootstrap: stager.bootstrap })
   swarm.on('connection', (connection) => store.replicate(connection))
   t.teardown(() => swarm.destroy())
 
@@ -163,14 +149,7 @@ test('should prefetch the latest version after partial metadata sync', async fun
 test('should continue updating when prefetch fails', async function (t) {
   t.timeout(60_000)
 
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
-
-  const stagerDir = await t.tmp()
-  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
-  await stager.ready()
-  t.teardown(() => stager.close())
+  const stager = await helper.Stager.initialize(t)
 
   const staging = await t.tmp()
   const local = new Localdrive(staging)
@@ -202,7 +181,7 @@ test('should continue updating when prefetch fails', async function (t) {
   updater.on('error', noop)
   const updated = new Promise((resolve) => updater.once('updated', resolve))
 
-  const swarm = new Hyperswarm({ bootstrap })
+  const swarm = new Hyperswarm({ bootstrap: stager.bootstrap })
   swarm.on('connection', (c) => store.replicate(c))
   swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
   await swarm.flush()
@@ -216,14 +195,7 @@ test('should continue updating when prefetch fails', async function (t) {
 test('should not prefetch before updating to a newer version', async function (t) {
   t.timeout(60_000)
 
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
-
-  const stagerDir = await t.tmp()
-  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
-  await stager.ready()
-  t.teardown(() => stager.close())
+  const stager = await helper.Stager.initialize(t)
 
   const staging = await t.tmp()
   const local = new Localdrive(staging)
@@ -254,7 +226,7 @@ test('should not prefetch before updating to a newer version', async function (t
 
   const updated = new Promise((resolve) => updater.once('updated', resolve))
 
-  const swarm = new Hyperswarm({ bootstrap })
+  const swarm = new Hyperswarm({ bootstrap: stager.bootstrap })
   swarm.on('connection', (c) => store.replicate(c))
   swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
   await swarm.flush()
@@ -269,14 +241,7 @@ test('should not prefetch before updating to a newer version', async function (t
 test('should detect update when remote version is newer', async function (t) {
   t.timeout(60_000)
 
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
-
-  const stagerDir = await t.tmp()
-  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
-  await stager.ready()
-  t.teardown(() => stager.close())
+  const stager = await helper.Stager.initialize(t)
 
   const staging = await t.tmp()
   const local = new Localdrive(staging)
@@ -303,7 +268,7 @@ test('should detect update when remote version is newer', async function (t) {
   await updater.ready()
   t.teardown(() => updater.close())
 
-  const swarm = new Hyperswarm({ bootstrap })
+  const swarm = new Hyperswarm({ bootstrap: stager.bootstrap })
   swarm.on('connection', (c) => store.replicate(c))
   swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
   await swarm.flush()
@@ -333,14 +298,7 @@ test('should detect update when remote version is newer', async function (t) {
 test('should apply update for Windows exe build', { skip: !isWindows }, async function (t) {
   t.timeout(120_000)
 
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
-
-  const stagerDir = await t.tmp()
-  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
-  await stager.ready()
-  t.teardown(() => stager.close())
+  const stager = await helper.Stager.initialize(t)
 
   const appName = 'updater-bare'
   const exeName = appName + '.exe'
@@ -377,7 +335,7 @@ test('should apply update for Windows exe build', { skip: !isWindows }, async fu
   await updater.ready()
   t.teardown(() => updater.close())
 
-  const swarm = new Hyperswarm({ bootstrap })
+  const swarm = new Hyperswarm({ bootstrap: stager.bootstrap })
   swarm.on('connection', (connection) => store.replicate(connection))
   swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
   await swarm.flush()
@@ -415,14 +373,7 @@ test('should apply update for Windows exe build', { skip: !isWindows }, async fu
 test('should detect update when appling is folder (MacOS)', async function (t) {
   t.timeout(60_000)
 
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
-
-  const stagerDir = await t.tmp()
-  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
-  await stager.ready()
-  t.teardown(() => stager.close())
+  const stager = await helper.Stager.initialize(t)
 
   const staging = await t.tmp()
   const local = new Localdrive(staging)
@@ -451,7 +402,7 @@ test('should detect update when appling is folder (MacOS)', async function (t) {
   await updater.ready()
   t.teardown(() => updater.close())
 
-  const swarm = new Hyperswarm({ bootstrap })
+  const swarm = new Hyperswarm({ bootstrap: stager.bootstrap })
   swarm.on('connection', (c) => store.replicate(c))
   swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
   await swarm.flush()
@@ -481,14 +432,7 @@ test('should detect update when appling is folder (MacOS)', async function (t) {
 test('should not update when remote version is older', async function (t) {
   t.timeout(60_000)
 
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
-
-  const stagerDir = await t.tmp()
-  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
-  await stager.ready()
-  t.teardown(() => stager.close())
+  const stager = await helper.Stager.initialize(t)
 
   const staging = await t.tmp()
   const local = new Localdrive(staging)
@@ -515,7 +459,7 @@ test('should not update when remote version is older', async function (t) {
   await updater.ready()
   t.teardown(() => updater.close())
 
-  const swarm = new Hyperswarm({ bootstrap })
+  const swarm = new Hyperswarm({ bootstrap: stager.bootstrap })
   swarm.on('connection', (c) => store.replicate(c))
   swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
   await swarm.flush()
@@ -535,14 +479,7 @@ test('should emit error if update not found', async function (t) {
   t.plan(1)
   t.timeout(60_000)
 
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
-
-  const stagerDir = await t.tmp()
-  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
-  await stager.ready()
-  t.teardown(() => stager.close())
+  const stager = await helper.Stager.initialize(t)
 
   const dir = await t.tmp()
   const appFile = path.join(dir, 'test.txt')
@@ -574,7 +511,7 @@ test('should emit error if update not found', async function (t) {
     updater.on('updating', resolve)
   })
 
-  const swarm = new Hyperswarm({ bootstrap })
+  const swarm = new Hyperswarm({ bootstrap: stager.bootstrap })
   t.teardown(async () => await swarm.destroy())
   swarm.on('connection', (c) => store.replicate(c))
   swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
@@ -586,14 +523,7 @@ test('should emit error if update not found', async function (t) {
 test('should update from prerelease to release', async function (t) {
   t.timeout(60_000)
 
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
-
-  const stagerDir = await t.tmp()
-  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
-  await stager.ready()
-  t.teardown(() => stager.close())
+  const stager = await helper.Stager.initialize(t)
 
   const staging = await t.tmp()
   const local = new Localdrive(staging)
@@ -623,7 +553,7 @@ test('should update from prerelease to release', async function (t) {
   const updated = new Promise((resolve) => updater.on('updated', resolve))
 
   const keyPair = await store.createKeyPair('test')
-  const swarm = new Hyperswarm({ keyPair, bootstrap })
+  const swarm = new Hyperswarm({ keyPair, bootstrap: stager.bootstrap })
   swarm.on('connection', (c) => store.replicate(c))
   swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
   await swarm.flush()
@@ -643,14 +573,7 @@ test('should delay update', async (t) => {
   t.timeout(60_000)
   t.plan(1)
 
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
-
-  const stagerDir = await t.tmp()
-  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
-  await stager.ready()
-  t.teardown(() => stager.close())
+  const stager = await helper.Stager.initialize(t)
 
   const staging = await t.tmp()
   const local = new Localdrive(staging)
@@ -679,7 +602,7 @@ test('should delay update', async (t) => {
 
   t.teardown(() => updater.close())
 
-  const swarm = new Hyperswarm({ bootstrap })
+  const swarm = new Hyperswarm({ bootstrap: stager.bootstrap })
   swarm.on('connection', (c) => store.replicate(c))
   swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
   await swarm.flush()
