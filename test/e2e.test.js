@@ -127,7 +127,7 @@ test('should receive and apply update when update happens while app is running',
   t.comment('run')
   const runParams = { args: [] }
   const appDir = await t.tmp()
-  const baseArgs = [appDir, stager.bootstrap, '1.0.1']
+  const baseArgs = [appDir, JSON.stringify(stager.bootstrap), '1.0.1']
 
   if (isLinux) {
     // needed because GHA does not support FUSE and SUID sandboxing
@@ -361,7 +361,7 @@ test('should receive and apply update when update happens while app is not runni
   t.comment('run')
   const runParams = { args: [] }
   const appDir = await t.tmp()
-  const baseArgs = [appDir, stager.bootstrap, '1.0.1']
+  const baseArgs = [appDir, JSON.stringify(stager.bootstrap), '1.0.1']
 
   if (isLinux) {
     // needed because GHA does not support FUSE and SUID sandboxing
@@ -577,7 +577,7 @@ test('should update from prerelease to release', async (t) => {
   t.comment('run')
   const runParams = { args: [] }
   const appDir = await t.tmp()
-  const baseArgs = [appDir, stager.bootstrap, '1.0.0']
+  const baseArgs = [appDir, JSON.stringify(stager.bootstrap), '1.0.0']
 
   if (isLinux) {
     // needed because GHA does not support FUSE and SUID sandboxing
