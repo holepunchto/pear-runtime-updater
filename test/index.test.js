@@ -1,7 +1,6 @@
 const test = require('brittle')
 const path = require('path')
 const fs = require('fs')
-const tmpDir = require('test-tmp')
 const Corestore = require('corestore')
 const Hyperdrive = require('hyperdrive')
 const Hyperswarm = require('hyperswarm')
@@ -23,12 +22,12 @@ test('should prefetch the latest version on first run', async function (t) {
   t.teardown(() => testnet.destroy())
   const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
 
-  const stagerDir = await tmpDir(t)
+  const stagerDir = await t.tmp()
   const stager = new helper.Stager({ dir: stagerDir, bootstrap })
   await stager.ready()
   t.teardown(() => stager.close())
 
-  const staged = await tmpDir(t)
+  const staged = await t.tmp()
   const appName = `updater-${host}`
   const prefix = `/by-arch/${host}/app/${appName}`
   const prefixDir = path.join(staged, 'by-arch', host, 'app', appName)
@@ -44,7 +43,7 @@ test('should prefetch the latest version on first run', async function (t) {
   await stager.stage(staged)
   await stager.seed()
 
-  const dir = await tmpDir(t)
+  const dir = await t.tmp()
   const store = new Corestore(path.join(dir, 'pear-runtime/corestore'))
   t.teardown(() => store.close())
 
@@ -84,12 +83,12 @@ test('should prefetch the latest version after partial metadata sync', async fun
   t.teardown(() => testnet.destroy())
   const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
 
-  const stagerDir = await tmpDir(t)
+  const stagerDir = await t.tmp()
   const stager = new helper.Stager({ dir: stagerDir, bootstrap })
   await stager.ready()
   t.teardown(() => stager.close())
 
-  const staged = await tmpDir(t)
+  const staged = await t.tmp()
   const appName = `updater-${host}`
   const prefix = `/by-arch/${host}/app/${appName}`
   const prefixDir = path.join(staged, 'by-arch', host, 'app', appName)
@@ -105,7 +104,7 @@ test('should prefetch the latest version after partial metadata sync', async fun
   await stager.stage(staged)
   await stager.seed()
 
-  const dir = await tmpDir(t)
+  const dir = await t.tmp()
   {
     const store = new Corestore(path.join(dir, 'pear-runtime/corestore'))
     const drive = new Hyperdrive(store, stager.drive.key)
@@ -168,12 +167,12 @@ test('should continue updating when prefetch fails', async function (t) {
   t.teardown(() => testnet.destroy())
   const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
 
-  const stagerDir = await tmpDir(t)
+  const stagerDir = await t.tmp()
   const stager = new helper.Stager({ dir: stagerDir, bootstrap })
   await stager.ready()
   t.teardown(() => stager.close())
 
-  const staging = await tmpDir(t)
+  const staging = await t.tmp()
   const local = new Localdrive(staging)
   await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.1' })))
   await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('v2'))
@@ -181,7 +180,7 @@ test('should continue updating when prefetch fails', async function (t) {
   await stager.stage(staging)
   await stager.seed()
 
-  const dir = await tmpDir(t)
+  const dir = await t.tmp()
   const store = new Corestore(path.join(dir, 'corestore'))
   const updater = new Updater({
     dir,
@@ -221,12 +220,12 @@ test('should not prefetch before updating to a newer version', async function (t
   t.teardown(() => testnet.destroy())
   const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
 
-  const stagerDir = await tmpDir(t)
+  const stagerDir = await t.tmp()
   const stager = new helper.Stager({ dir: stagerDir, bootstrap })
   await stager.ready()
   t.teardown(() => stager.close())
 
-  const staging = await tmpDir(t)
+  const staging = await t.tmp()
   const local = new Localdrive(staging)
   await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.1' })))
   await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('v2'))
@@ -234,7 +233,7 @@ test('should not prefetch before updating to a newer version', async function (t
   await stager.stage(staging)
   await stager.seed()
 
-  const dir = await tmpDir(t)
+  const dir = await t.tmp()
   const store = new Corestore(path.join(dir, 'corestore'))
   const updater = new Updater({
     dir,
@@ -274,12 +273,12 @@ test('should detect update when remote version is newer', async function (t) {
   t.teardown(() => testnet.destroy())
   const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
 
-  const stagerDir = await tmpDir(t)
+  const stagerDir = await t.tmp()
   const stager = new helper.Stager({ dir: stagerDir, bootstrap })
   await stager.ready()
   t.teardown(() => stager.close())
 
-  const staging = await tmpDir(t)
+  const staging = await t.tmp()
   const local = new Localdrive(staging)
   await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.0' })))
   await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('v1'))
@@ -287,7 +286,7 @@ test('should detect update when remote version is newer', async function (t) {
   await stager.stage(staging)
   await stager.seed()
 
-  const dir = await tmpDir(t)
+  const dir = await t.tmp()
   const appFile = path.join(dir, 'test.txt')
   await fs.promises.writeFile(appFile, 'v1')
 
@@ -314,7 +313,7 @@ test('should detect update when remote version is newer', async function (t) {
 
   const updated = new Promise((resolve) => updater.on('updated', resolve))
 
-  const staging2 = await tmpDir(t)
+  const staging2 = await t.tmp()
   const local2 = new Localdrive(staging2)
   await local2.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.1' })))
   await local2.put(`/by-arch/${host}/app/test.txt`, Buffer.from('v2'))
@@ -338,22 +337,22 @@ test('should apply update for Windows exe build', { skip: !isWindows }, async fu
   t.teardown(() => testnet.destroy())
   const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
 
-  const stagerDir = await tmpDir(t)
+  const stagerDir = await t.tmp()
   const stager = new helper.Stager({ dir: stagerDir, bootstrap })
   await stager.ready()
   t.teardown(() => stager.close())
 
   const appName = 'updater-bare'
   const exeName = appName + '.exe'
-  const app = await tmpDir(t)
+  const app = await t.tmp()
 
   const v1Exe = await buildWindowsExe(app, appName, '1.0.0')
-  const runDir = await tmpDir(t)
+  const runDir = await t.tmp()
   const appFile = path.join(runDir, exeName)
   await fs.promises.copyFile(v1Exe, appFile)
   const v1 = await fs.promises.readFile(appFile)
 
-  const staging = await tmpDir(t)
+  const staging = await t.tmp()
   await pearBuild({
     package: path.join(app, 'package.json'),
     [windowsAppOption]: v1Exe,
@@ -362,7 +361,7 @@ test('should apply update for Windows exe build', { skip: !isWindows }, async fu
   await stager.stage(staging)
   await stager.seed()
 
-  const dir = await tmpDir(t)
+  const dir = await t.tmp()
   const store = new Corestore(path.join(dir, 'corestore'))
   t.teardown(() => store.close())
 
@@ -420,12 +419,12 @@ test('should detect update when appling is folder (MacOS)', async function (t) {
   t.teardown(() => testnet.destroy())
   const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
 
-  const stagerDir = await tmpDir(t)
+  const stagerDir = await t.tmp()
   const stager = new helper.Stager({ dir: stagerDir, bootstrap })
   await stager.ready()
   t.teardown(() => stager.close())
 
-  const staging = await tmpDir(t)
+  const staging = await t.tmp()
   const local = new Localdrive(staging)
   await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.0' })))
   await local.put(`/by-arch/${host}/app/test.app/test.txt`, Buffer.from('v1'))
@@ -433,7 +432,7 @@ test('should detect update when appling is folder (MacOS)', async function (t) {
   await stager.stage(staging)
   await stager.seed()
 
-  const dir = await tmpDir(t)
+  const dir = await t.tmp()
   const appDir = path.join(dir, 'test.app')
   await fs.promises.mkdir(appDir, { recursive: true })
   const appFile = path.join(appDir, 'test.txt')
@@ -462,7 +461,7 @@ test('should detect update when appling is folder (MacOS)', async function (t) {
 
   const updated = new Promise((resolve) => updater.on('updated', resolve))
 
-  const staging2 = await tmpDir(t)
+  const staging2 = await t.tmp()
   const local2 = new Localdrive(staging2)
   await local2.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.1' })))
   await local2.put(`/by-arch/${host}/app/test.app/test.txt`, Buffer.from('v2'))
@@ -486,12 +485,12 @@ test('should not update when remote version is older', async function (t) {
   t.teardown(() => testnet.destroy())
   const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
 
-  const stagerDir = await tmpDir(t)
+  const stagerDir = await t.tmp()
   const stager = new helper.Stager({ dir: stagerDir, bootstrap })
   await stager.ready()
   t.teardown(() => stager.close())
 
-  const staging = await tmpDir(t)
+  const staging = await t.tmp()
   const local = new Localdrive(staging)
   await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.0' })))
   await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('old'))
@@ -499,7 +498,7 @@ test('should not update when remote version is older', async function (t) {
   await stager.stage(staging)
   await stager.seed()
 
-  const dir = await tmpDir(t)
+  const dir = await t.tmp()
   const appFile = path.join(dir, 'test.txt')
   await fs.promises.writeFile(appFile, 'current')
 
@@ -540,12 +539,12 @@ test('should emit error if update not found', async function (t) {
   t.teardown(() => testnet.destroy())
   const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
 
-  const stagerDir = await tmpDir(t)
+  const stagerDir = await t.tmp()
   const stager = new helper.Stager({ dir: stagerDir, bootstrap })
   await stager.ready()
   t.teardown(() => stager.close())
 
-  const dir = await tmpDir(t)
+  const dir = await t.tmp()
   const appFile = path.join(dir, 'test.txt')
   await fs.promises.writeFile(appFile, 'v1')
 
@@ -562,7 +561,7 @@ test('should emit error if update not found', async function (t) {
   await updater.ready()
   t.teardown(() => updater.close())
 
-  const staging = await tmpDir(t)
+  const staging = await t.tmp()
   const local = new Localdrive(staging)
   await local.put('/package.json', Buffer.from(JSON.stringify({ version: '2.0.0' })))
   await local.put(`/by-arch/${host}/app/not_test.txt`, Buffer.from('v2'))
@@ -591,12 +590,12 @@ test('should update from prerelease to release', async function (t) {
   t.teardown(() => testnet.destroy())
   const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
 
-  const stagerDir = await tmpDir(t)
+  const stagerDir = await t.tmp()
   const stager = new helper.Stager({ dir: stagerDir, bootstrap })
   await stager.ready()
   t.teardown(() => stager.close())
 
-  const staging = await tmpDir(t)
+  const staging = await t.tmp()
   const local = new Localdrive(staging)
   await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.0' })))
   await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('release'))
@@ -604,7 +603,7 @@ test('should update from prerelease to release', async function (t) {
   await stager.stage(staging)
   await stager.seed()
 
-  const dir = await tmpDir(t)
+  const dir = await t.tmp()
   const appFile = path.join(dir, 'test.txt')
   await fs.promises.writeFile(appFile, 'prerelease')
 
@@ -648,12 +647,12 @@ test('should delay update', async (t) => {
   t.teardown(() => testnet.destroy())
   const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
 
-  const stagerDir = await tmpDir(t)
+  const stagerDir = await t.tmp()
   const stager = new helper.Stager({ dir: stagerDir, bootstrap })
   await stager.ready()
   t.teardown(() => stager.close())
 
-  const staging = await tmpDir(t)
+  const staging = await t.tmp()
   const local = new Localdrive(staging)
   await local.put('/package.json', Buffer.from(JSON.stringify({ version: '2.0.0' })))
   await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('old'))
@@ -661,7 +660,7 @@ test('should delay update', async (t) => {
   await stager.stage(staging)
   await stager.seed()
 
-  const dir = await tmpDir(t)
+  const dir = await t.tmp()
   const appFile = path.join(dir, 'test.txt')
   await fs.promises.writeFile(appFile, 'current')
   const delay = 5000

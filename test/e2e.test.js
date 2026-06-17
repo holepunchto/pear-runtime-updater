@@ -4,7 +4,6 @@ const helper = require('./helper')
 const path = require('path')
 const { isLinux, isMac, isWindows, platform, arch } = require('which-runtime')
 const fs = require('fs')
-const tmpDir = require('test-tmp')
 const Localdrive = require('localdrive')
 const pearBuild = require('pear-build')
 
@@ -52,7 +51,7 @@ test('should receive and apply update when update happens while app is running',
   const testnet = await helper.createTestnet()
   t.teardown(() => testnet.destroy())
 
-  const stagerDir = await tmpDir(t)
+  const stagerDir = await t.tmp()
 
   t.comment('prepare stager')
   const stager = new helper.Stager({
@@ -65,7 +64,7 @@ test('should receive and apply update when update happens while app is running',
   t.ok(link, `prepared ${link}`)
 
   t.comment('prepare copy of fixture')
-  const app = await tmpDir(t)
+  const app = await t.tmp()
   await new Localdrive(fixture).mirror(new Localdrive(app)).done()
 
   t.comment('update app version and link')
@@ -97,7 +96,7 @@ test('should receive and apply update when update happens while app is running',
   if (isWindows) appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'Updater.msix')
 
   t.comment(isWindows ? 'trust and install app' : 'copy build to run dir')
-  const runDir = await tmpDir(t)
+  const runDir = await t.tmp()
   let appRunPath
   if (isLinux) {
     appRunPath = path.join(runDir, 'Updater.AppImage')
@@ -120,7 +119,7 @@ test('should receive and apply update when update happens while app is running',
   }
 
   t.comment('run pear-build')
-  const staging = await tmpDir(t)
+  const staging = await t.tmp()
   await t.execution(
     pearBuild({
       package: path.join(app, 'package.json'),
@@ -138,7 +137,7 @@ test('should receive and apply update when update happens while app is running',
 
   t.comment('run')
   const runParams = { args: [] }
-  const appDir = await tmpDir(t)
+  const appDir = await t.tmp()
   const bootstrap = JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`))
   const baseArgs = [appDir, bootstrap, '1.0.1']
 
@@ -256,7 +255,7 @@ test('should receive and apply update when update happens while app is not runni
   const testnet = await helper.createTestnet()
   t.teardown(() => testnet.destroy())
 
-  const stagerDir = await tmpDir(t)
+  const stagerDir = await t.tmp()
 
   t.comment('prepare stager')
   const stager = new helper.Stager({
@@ -269,7 +268,7 @@ test('should receive and apply update when update happens while app is not runni
   t.ok(link, `prepared ${link}`)
 
   t.comment('prepare copy of fixture')
-  const app = await tmpDir(t)
+  const app = await t.tmp()
   await new Localdrive(fixture).mirror(new Localdrive(app)).done()
 
   t.comment('update app version and link')
@@ -301,7 +300,7 @@ test('should receive and apply update when update happens while app is not runni
   if (isWindows) appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'Updater.msix')
 
   t.comment(isWindows ? 'trust and install app' : 'copy build to run dir')
-  const runDir = await tmpDir(t)
+  const runDir = await t.tmp()
   let appRunPath
   if (isLinux) {
     appRunPath = path.join(runDir, 'Updater.AppImage')
@@ -324,7 +323,7 @@ test('should receive and apply update when update happens while app is not runni
   }
 
   t.comment('run pear-build')
-  const staging = await tmpDir(t)
+  const staging = await t.tmp()
   await t.execution(
     pearBuild({
       package: path.join(app, 'package.json'),
@@ -383,7 +382,7 @@ test('should receive and apply update when update happens while app is not runni
 
   t.comment('run')
   const runParams = { args: [] }
-  const appDir = await tmpDir(t)
+  const appDir = await t.tmp()
   const bootstrap = JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`))
   const baseArgs = [appDir, bootstrap, '1.0.1']
 
@@ -459,7 +458,7 @@ test('should update from prerelease to release', async (t) => {
   const testnet = await helper.createTestnet()
   t.teardown(() => testnet.destroy())
 
-  const stagerDir = await tmpDir(t)
+  const stagerDir = await t.tmp()
 
   t.comment('prepare stager')
   const stager = new helper.Stager({
@@ -472,7 +471,7 @@ test('should update from prerelease to release', async (t) => {
   t.ok(link, `prepared ${link}`)
 
   t.comment('prepare copy of fixture')
-  const app = await tmpDir(t)
+  const app = await t.tmp()
   await new Localdrive(fixture).mirror(new Localdrive(app)).done()
 
   t.comment('update app version and link')
@@ -516,7 +515,7 @@ test('should update from prerelease to release', async (t) => {
   if (isWindows) appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'Updater.msix')
 
   t.comment(isWindows ? 'trust and install app' : 'copy build to run dir')
-  const runDir = await tmpDir(t)
+  const runDir = await t.tmp()
   let appRunPath
   if (isLinux) {
     appRunPath = path.join(runDir, 'Updater.AppImage')
@@ -539,7 +538,7 @@ test('should update from prerelease to release', async (t) => {
   }
 
   t.comment('run pear-build')
-  const staging = await tmpDir(t)
+  const staging = await t.tmp()
   await t.execution(
     pearBuild({
       package: path.join(app, 'package.json'),
@@ -610,7 +609,7 @@ test('should update from prerelease to release', async (t) => {
 
   t.comment('run')
   const runParams = { args: [] }
-  const appDir = await tmpDir(t)
+  const appDir = await t.tmp()
   const bootstrap = JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`))
   const baseArgs = [appDir, bootstrap, '1.0.0']
 
