@@ -481,6 +481,7 @@ test('should emit error if update not found', async function (t) {
   const appFile = path.join(dir, 'test.txt')
   await fsp.writeFile(appFile, 'v1')
 
+  const stager = await helper.Stager.initialize(t)
   const store = new Corestore(path.join(dir, 'corestore'))
   const updater = new Updater({
     dir,
@@ -500,7 +501,6 @@ test('should emit error if update not found', async function (t) {
   await local.put(`/by-arch/${host}/app/not_test.txt`, Buffer.from('v2'))
   await local.close()
 
-  const stager = await helper.Stager.initialize(t)
   await stager.stage(staging)
   await stager.seed()
 
