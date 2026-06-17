@@ -647,12 +647,10 @@ async function buildWindowsExe(dir, name, version) {
 }
 
 async function exists(filename) {
-  try {
-    await fs.promises.access(filename)
-    return true
-  } catch {
-    return false
-  }
+  return fs.promises
+    .access(filename)
+    .then(() => true)
+    .catch(() => false)
 }
 
 function noop() {}
