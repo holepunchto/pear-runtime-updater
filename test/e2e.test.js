@@ -560,8 +560,7 @@ test('should update from prerelease to release', async (t) => {
     cwd: app,
     stdio: 'pipe'
   })
-  run.stdout.on('data', (data) => t.comment('app: ' + data.toString().trim()))
-  run.stderr.on('data', (data) => t.comment('app stderr: ' + data.toString().trim()))
+
   // On Windows, the process may exit with code 1 when terminated by the MSIX installer
   let exit = helper.waitForExit(run)
   const updated = new Promise((resolve) =>
@@ -590,8 +589,6 @@ test('should update from prerelease to release', async (t) => {
     cwd: app,
     stdio: 'pipe'
   })
-  run.stdout.on('data', (data) => t.comment('app: ' + data.toString().trim()))
-  run.stderr.on('data', (data) => t.comment('app stderr: ' + data.toString().trim()))
   exit = helper.waitForExit(run)
 
   t.comment('wait for version')
