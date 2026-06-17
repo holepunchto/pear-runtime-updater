@@ -3,7 +3,7 @@ const { spawn, spawnSync } = require('child_process')
 const helper = require('./helper')
 const path = require('path')
 const { isLinux, isMac, isWindows, platform, arch } = require('which-runtime')
-const fs = require('fs')
+const fsp = require('fs/promises')
 const Localdrive = require('localdrive')
 const pearBuild = require('pear-build')
 
@@ -61,11 +61,7 @@ test('should receive and apply update when update happens while app is running',
     const pkg = require(path.join(app, 'package.json'))
     pkg.version = '1.0.0'
     pkg.upgrade = link
-    await fs.promises.writeFile(
-      path.join(app, 'package.json'),
-      JSON.stringify(pkg, null, 2),
-      'utf8'
-    )
+    await fsp.writeFile(path.join(app, 'package.json'), JSON.stringify(pkg, null, 2), 'utf8')
   }
 
   t.comment('build app')
@@ -76,10 +72,7 @@ test('should receive and apply update when update happens while app is running',
   }
   if (isLinux) {
     appBuildPath = path.join(app, 'out', 'make', `Updater.AppImage`)
-    await fs.promises.rename(
-      path.join(app, 'out', 'make', `Updater-1.0.0-${arch}.AppImage`),
-      appBuildPath
-    )
+    await fsp.rename(path.join(app, 'out', 'make', `Updater-1.0.0-${arch}.AppImage`), appBuildPath)
   }
   if (isMac) appBuildPath = path.join(app, 'out', `Updater-${host}`, 'Updater.app')
   if (isWindows) appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'Updater.msix')
@@ -89,8 +82,8 @@ test('should receive and apply update when update happens while app is running',
   let appRunPath
   if (isLinux) {
     appRunPath = path.join(runDir, 'Updater.AppImage')
-    await fs.promises.mkdir(path.dirname(appRunPath), { recursive: true })
-    await fs.promises.cp(appBuildPath, appRunPath)
+    await fsp.mkdir(path.dirname(appRunPath), { recursive: true })
+    await fsp.cp(appBuildPath, appRunPath)
   }
   if (isMac) {
     appRunPath = path.join(runDir, 'Updater.app')
@@ -157,27 +150,20 @@ test('should receive and apply update when update happens while app is running',
     const pkg = require(path.join(app, 'package.json'))
     pkg.version = '1.0.1'
     pkg.upgrade = link
-    await fs.promises.writeFile(
-      path.join(app, 'package.json'),
-      JSON.stringify(pkg, null, 2),
-      'utf8'
-    )
+    await fsp.writeFile(path.join(app, 'package.json'), JSON.stringify(pkg, null, 2), 'utf8')
   }
 
   t.comment('rebuild app')
   {
     await t.execution(
-      fs.promises.rm(path.join(app, 'out'), { recursive: true }),
+      fsp.rm(path.join(app, 'out'), { recursive: true }),
       'removed old build successfully'
     )
     const child = spawn(npm, ['run', 'make'], { cwd: app, shell: true })
     await t.execution(helper.waitForExit(child), 'app rebuilt successfully')
   }
   if (isLinux) {
-    await fs.promises.rename(
-      path.join(app, 'out', 'make', `Updater-1.0.1-${arch}.AppImage`),
-      appBuildPath
-    )
+    await fsp.rename(path.join(app, 'out', 'make', `Updater-1.0.1-${arch}.AppImage`), appBuildPath)
   }
 
   t.comment('rerun pear-build')
@@ -254,11 +240,7 @@ test('should receive and apply update when update happens while app is not runni
     const pkg = require(path.join(app, 'package.json'))
     pkg.version = '1.0.0'
     pkg.upgrade = link
-    await fs.promises.writeFile(
-      path.join(app, 'package.json'),
-      JSON.stringify(pkg, null, 2),
-      'utf8'
-    )
+    await fsp.writeFile(path.join(app, 'package.json'), JSON.stringify(pkg, null, 2), 'utf8')
   }
 
   t.comment('build app')
@@ -269,10 +251,7 @@ test('should receive and apply update when update happens while app is not runni
   }
   if (isLinux) {
     appBuildPath = path.join(app, 'out', 'make', `Updater.AppImage`)
-    await fs.promises.rename(
-      path.join(app, 'out', 'make', `Updater-1.0.0-${arch}.AppImage`),
-      appBuildPath
-    )
+    await fsp.rename(path.join(app, 'out', 'make', `Updater-1.0.0-${arch}.AppImage`), appBuildPath)
   }
   if (isMac) appBuildPath = path.join(app, 'out', `Updater-${host}`, 'Updater.app')
   if (isWindows) appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'Updater.msix')
@@ -282,8 +261,8 @@ test('should receive and apply update when update happens while app is not runni
   let appRunPath
   if (isLinux) {
     appRunPath = path.join(runDir, 'Updater.AppImage')
-    await fs.promises.mkdir(path.dirname(appRunPath), { recursive: true })
-    await fs.promises.cp(appBuildPath, appRunPath)
+    await fsp.mkdir(path.dirname(appRunPath), { recursive: true })
+    await fsp.cp(appBuildPath, appRunPath)
   }
   if (isMac) {
     appRunPath = path.join(runDir, 'Updater.app')
@@ -322,27 +301,20 @@ test('should receive and apply update when update happens while app is not runni
     const pkg = require(path.join(app, 'package.json'))
     pkg.version = '1.0.1'
     pkg.upgrade = link
-    await fs.promises.writeFile(
-      path.join(app, 'package.json'),
-      JSON.stringify(pkg, null, 2),
-      'utf8'
-    )
+    await fsp.writeFile(path.join(app, 'package.json'), JSON.stringify(pkg, null, 2), 'utf8')
   }
 
   t.comment('rebuild app')
   {
     await t.execution(
-      fs.promises.rm(path.join(app, 'out'), { recursive: true }),
+      fsp.rm(path.join(app, 'out'), { recursive: true }),
       'removed old build successfully'
     )
     const child = spawn(npm, ['run', 'make'], { cwd: app, shell: true })
     await t.execution(helper.waitForExit(child), 'app rebuilt successfully')
   }
   if (isLinux) {
-    await fs.promises.rename(
-      path.join(app, 'out', 'make', `Updater-1.0.1-${arch}.AppImage`),
-      appBuildPath
-    )
+    await fsp.rename(path.join(app, 'out', 'make', `Updater-1.0.1-${arch}.AppImage`), appBuildPath)
   }
 
   t.comment('rerun pear-build')
@@ -446,15 +418,11 @@ test('should update from prerelease to release', async (t) => {
     const pkg = require(path.join(app, 'package.json'))
     pkg.version = '1.0.0-rc.1'
     pkg.upgrade = link
-    await fs.promises.writeFile(
-      path.join(app, 'package.json'),
-      JSON.stringify(pkg, null, 2),
-      'utf8'
-    )
+    await fsp.writeFile(path.join(app, 'package.json'), JSON.stringify(pkg, null, 2), 'utf8')
     if (isWindows) {
       const forgePath = path.join(app, 'forge.config.js')
-      const forgeContent = await fs.promises.readFile(forgePath, 'utf8')
-      await fs.promises.writeFile(
+      const forgeContent = await fsp.readFile(forgePath, 'utf8')
+      await fsp.writeFile(
         forgePath,
         forgeContent.replace(
           "manifestVariables: { publisher: 'Holepunch' }",
@@ -473,7 +441,7 @@ test('should update from prerelease to release', async (t) => {
   }
   if (isLinux) {
     appBuildPath = path.join(app, 'out', 'make', 'Updater.AppImage')
-    await fs.promises.rename(
+    await fsp.rename(
       path.join(app, 'out', 'make', `Updater-1.0.0-rc.1-${arch}.AppImage`),
       appBuildPath
     )
@@ -486,8 +454,8 @@ test('should update from prerelease to release', async (t) => {
   let appRunPath
   if (isLinux) {
     appRunPath = path.join(runDir, 'Updater.AppImage')
-    await fs.promises.mkdir(path.dirname(appRunPath), { recursive: true })
-    await fs.promises.cp(appBuildPath, appRunPath)
+    await fsp.mkdir(path.dirname(appRunPath), { recursive: true })
+    await fsp.cp(appBuildPath, appRunPath)
   }
   if (isMac) {
     appRunPath = path.join(runDir, 'Updater.app')
@@ -526,15 +494,11 @@ test('should update from prerelease to release', async (t) => {
     const pkg = require(path.join(app, 'package.json'))
     pkg.version = '1.0.0'
     pkg.upgrade = link
-    await fs.promises.writeFile(
-      path.join(app, 'package.json'),
-      JSON.stringify(pkg, null, 2),
-      'utf8'
-    )
+    await fsp.writeFile(path.join(app, 'package.json'), JSON.stringify(pkg, null, 2), 'utf8')
     if (isWindows) {
       const forgePath = path.join(app, 'forge.config.js')
-      const forgeContent = await fs.promises.readFile(forgePath, 'utf8')
-      await fs.promises.writeFile(
+      const forgeContent = await fsp.readFile(forgePath, 'utf8')
+      await fsp.writeFile(
         forgePath,
         forgeContent.replace(
           "manifestVariables: { publisher: 'Holepunch', packageVersion: '1.0.0.1' }",
@@ -548,17 +512,14 @@ test('should update from prerelease to release', async (t) => {
   t.comment('rebuild app')
   {
     await t.execution(
-      fs.promises.rm(path.join(app, 'out'), { recursive: true }),
+      fsp.rm(path.join(app, 'out'), { recursive: true }),
       'removed old build successfully'
     )
     const child = spawn(npm, ['run', 'make'], { cwd: app, shell: true })
     await t.execution(helper.waitForExit(child), 'app rebuilt successfully')
   }
   if (isLinux) {
-    await fs.promises.rename(
-      path.join(app, 'out', 'make', `Updater-1.0.0-${arch}.AppImage`),
-      appBuildPath
-    )
+    await fsp.rename(path.join(app, 'out', 'make', `Updater-1.0.0-${arch}.AppImage`), appBuildPath)
   }
 
   t.comment('rerun pear-build')

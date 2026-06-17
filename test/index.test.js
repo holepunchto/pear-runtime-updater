@@ -1,6 +1,6 @@
 const test = require('brittle')
 const path = require('path')
-const fs = require('fs')
+const fsp = require('fs/promises')
 const Corestore = require('corestore')
 const Hyperdrive = require('hyperdrive')
 const Hyperswarm = require('hyperswarm')
@@ -23,13 +23,13 @@ test('should prefetch the latest version on first run', async function (t) {
   const prefix = `/by-arch/${host}/app/${appName}`
   const prefixDir = path.join(staged, 'by-arch', host, 'app', appName)
 
-  await fs.promises.mkdir(prefixDir, { recursive: true })
-  await fs.promises.writeFile(
+  await fsp.mkdir(prefixDir, { recursive: true })
+  await fsp.writeFile(
     path.join(staged, 'package.json'),
     JSON.stringify({ version: '1.0.0' }, null, 2),
     'utf8'
   )
-  await fs.promises.writeFile(path.join(prefixDir, 'bundle.txt'), 'first run payload', 'utf8')
+  await fsp.writeFile(path.join(prefixDir, 'bundle.txt'), 'first run payload', 'utf8')
 
   const stager = await helper.Stager.initialize(t)
   await stager.stage(staged)
@@ -76,13 +76,13 @@ test('should prefetch the latest version after partial metadata sync', async fun
   const prefix = `/by-arch/${host}/app/${appName}`
   const prefixDir = path.join(staged, 'by-arch', host, 'app', appName)
 
-  await fs.promises.mkdir(prefixDir, { recursive: true })
-  await fs.promises.writeFile(
+  await fsp.mkdir(prefixDir, { recursive: true })
+  await fsp.writeFile(
     path.join(staged, 'package.json'),
     JSON.stringify({ version: '1.0.0' }, null, 2),
     'utf8'
   )
-  await fs.promises.writeFile(path.join(prefixDir, 'bundle.txt'), 'partial sync payload', 'utf8')
+  await fsp.writeFile(path.join(prefixDir, 'bundle.txt'), 'partial sync payload', 'utf8')
 
   const stager = await helper.Stager.initialize(t)
   await stager.stage(staged)
@@ -251,7 +251,7 @@ test('should detect update when remote version is newer', async function (t) {
 
   const dir = await t.tmp()
   const appFile = path.join(dir, 'test.txt')
-  await fs.promises.writeFile(appFile, 'v1')
+  await fsp.writeFile(appFile, 'v1')
 
   const store = new Corestore(path.join(dir, 'corestore'))
   const updater = new Updater({
@@ -288,7 +288,7 @@ test('should detect update when remote version is newer', async function (t) {
 
   if (!isWindows) {
     await updater.applyUpdate()
-    const content = await fs.promises.readFile(appFile, 'utf8')
+    const content = await fsp.readFile(appFile, 'utf8')
     t.is(content, 'v2', 'file was swapped to new version')
   }
 })
@@ -303,8 +303,8 @@ test('should apply update for Windows exe build', { skip: !isWindows }, async fu
   const v1Exe = await buildWindowsExe(app, appName, '1.0.0')
   const runDir = await t.tmp()
   const appFile = path.join(runDir, exeName)
-  await fs.promises.copyFile(v1Exe, appFile)
-  const v1 = await fs.promises.readFile(appFile)
+  await fsp.copyFile(v1Exe, appFile)
+  const v1 = await fsp.readFile(appFile)
 
   const staging = await t.tmp()
   await pearBuild({
@@ -347,8 +347,8 @@ test('should apply update for Windows exe build', { skip: !isWindows }, async fu
   })
 
   const v2Exe = await buildWindowsExe(app, appName, '1.0.1')
-  const v2 = await fs.promises.readFile(v2Exe)
-  await fs.promises.rm(staging, { recursive: true, force: true })
+  const v2 = await fsp.readFile(v2Exe)
+  await fsp.rm(staging, { recursive: true, force: true })
   await pearBuild({
     package: path.join(app, 'package.json'),
     [windowsAppOption]: v2Exe,
@@ -359,9 +359,9 @@ test('should apply update for Windows exe build', { skip: !isWindows }, async fu
   await updated
   await updater.applyUpdate()
 
-  t.alike(await fs.promises.readFile(appFile), v2, 'exe was replaced with v2 build')
+  t.alike(await fsp.readFile(appFile), v2, 'exe was replaced with v2 build')
   t.alike(
-    await fs.promises.readFile(path.join(runDir, `${appName}-1.0.0.exe`)),
+    await fsp.readFile(path.join(runDir, `${appName}-1.0.0.exe`)),
     v1,
     'v1 exe was kept as versioned backup'
   )
@@ -383,9 +383,9 @@ test('should detect update when appling is folder (MacOS)', async function (t) {
 
   const dir = await t.tmp()
   const appDir = path.join(dir, 'test.app')
-  await fs.promises.mkdir(appDir, { recursive: true })
+  await fsp.mkdir(appDir, { recursive: true })
   const appFile = path.join(appDir, 'test.txt')
-  await fs.promises.writeFile(appFile, 'v1')
+  await fsp.writeFile(appFile, 'v1')
 
   const store = new Corestore(path.join(dir, 'corestore'))
   const updater = new Updater({
@@ -422,7 +422,7 @@ test('should detect update when appling is folder (MacOS)', async function (t) {
 
   if (!isWindows) {
     await updater.applyUpdate()
-    const content = await fs.promises.readFile(appFile, 'utf8')
+    const content = await fsp.readFile(appFile, 'utf8')
     t.is(content, 'v2', 'file was swapped to new version')
   }
 })
@@ -442,7 +442,7 @@ test('should not update when remote version is older', async function (t) {
 
   const dir = await t.tmp()
   const appFile = path.join(dir, 'test.txt')
-  await fs.promises.writeFile(appFile, 'current')
+  await fsp.writeFile(appFile, 'current')
 
   const store = new Corestore(path.join(dir, 'corestore'))
   const updater = new Updater({
@@ -468,7 +468,7 @@ test('should not update when remote version is older', async function (t) {
   t.is(updater.updated, false, 'should not update to older version')
 
   if (!isWindows) {
-    const content = await fs.promises.readFile(appFile, 'utf8')
+    const content = await fsp.readFile(appFile, 'utf8')
     t.is(content, 'current', 'file unchanged')
   }
 })
@@ -479,7 +479,7 @@ test('should emit error if update not found', async function (t) {
 
   const dir = await t.tmp()
   const appFile = path.join(dir, 'test.txt')
-  await fs.promises.writeFile(appFile, 'v1')
+  await fsp.writeFile(appFile, 'v1')
 
   const store = new Corestore(path.join(dir, 'corestore'))
   const updater = new Updater({
@@ -533,7 +533,7 @@ test('should update from prerelease to release', async function (t) {
 
   const dir = await t.tmp()
   const appFile = path.join(dir, 'test.txt')
-  await fs.promises.writeFile(appFile, 'prerelease')
+  await fsp.writeFile(appFile, 'prerelease')
 
   const store = new Corestore(path.join(dir, 'corestore'))
   const updater = new Updater({
@@ -562,7 +562,7 @@ test('should update from prerelease to release', async function (t) {
 
   if (!isWindows) {
     await updater.applyUpdate()
-    const content = await fs.promises.readFile(appFile, 'utf8')
+    const content = await fsp.readFile(appFile, 'utf8')
     t.is(content, 'release', 'file was swapped')
   }
 })
@@ -583,7 +583,7 @@ test('should delay update', async (t) => {
 
   const dir = await t.tmp()
   const appFile = path.join(dir, 'test.txt')
-  await fs.promises.writeFile(appFile, 'current')
+  await fsp.writeFile(appFile, 'current')
   const delay = 5000
 
   const store = new Corestore(path.join(dir, 'corestore'))
@@ -612,8 +612,8 @@ test('should delay update', async (t) => {
 })
 
 async function buildWindowsExe(dir, name, version) {
-  await fs.promises.rm(path.join(dir, 'out'), { recursive: true, force: true })
-  await fs.promises.writeFile(
+  await fsp.rm(path.join(dir, 'out'), { recursive: true, force: true })
+  await fsp.writeFile(
     path.join(dir, 'package.json'),
     JSON.stringify(
       {
@@ -627,7 +627,7 @@ async function buildWindowsExe(dir, name, version) {
       2
     )
   )
-  await fs.promises.writeFile(
+  await fsp.writeFile(
     path.join(dir, 'bin.js'),
     "const pkg = require('./package.json')\nconsole.log(`${pkg.name} ${pkg.version}`)\n"
   )
@@ -647,7 +647,7 @@ async function buildWindowsExe(dir, name, version) {
 }
 
 async function exists(filename) {
-  return fs.promises
+  return fsp
     .access(filename)
     .then(() => true)
     .catch(() => false)
