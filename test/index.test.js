@@ -15,6 +15,11 @@ const host = platform + '-' + arch
 const windowsHost = 'win32-' + arch
 const windowsAppOption = 'win32' + arch.charAt(0).toUpperCase() + arch.slice(1) + 'App'
 
+let testnet
+const unhookTestnet = test.hook('create testnet', async () => {
+  testnet = await helper.createTestnet()
+})
+
 test('should prefetch the latest version on first run', async function (t) {
   t.timeout(120_000)
 
@@ -31,7 +36,7 @@ test('should prefetch the latest version on first run', async function (t) {
   )
   await fsp.writeFile(path.join(prefixDir, 'bundle.txt'), 'first run payload', 'utf8')
 
-  const stager = await helper.Stager.initialize(t)
+  const stager = await helper.Stager.initialize(t, { testnet })
   await stager.stage(staged)
   await stager.seed()
 
@@ -84,7 +89,7 @@ test('should prefetch the latest version after partial metadata sync', async fun
   )
   await fsp.writeFile(path.join(prefixDir, 'bundle.txt'), 'partial sync payload', 'utf8')
 
-  const stager = await helper.Stager.initialize(t)
+  const stager = await helper.Stager.initialize(t, { testnet })
   await stager.stage(staged)
   await stager.seed()
 
@@ -153,7 +158,7 @@ test('should continue updating when prefetch fails', async function (t) {
   await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('v2'))
   await local.close()
 
-  const stager = await helper.Stager.initialize(t)
+  const stager = await helper.Stager.initialize(t, { testnet })
   await stager.stage(staging)
   await stager.seed()
 
@@ -195,7 +200,7 @@ test('should not prefetch before updating to a newer version', async function (t
   await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('v2'))
   await local.close()
 
-  const stager = await helper.Stager.initialize(t)
+  const stager = await helper.Stager.initialize(t, { testnet })
   await stager.stage(staging)
   await stager.seed()
 
@@ -237,7 +242,7 @@ test('should detect update when remote version is newer', async function (t) {
   await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('v1'))
   await local.close()
 
-  const stager = await helper.Stager.initialize(t)
+  const stager = await helper.Stager.initialize(t, { testnet })
   await stager.stage(staging)
   await stager.seed()
 
@@ -301,7 +306,7 @@ test('should apply update for Windows exe build', { skip: !isWindows }, async fu
     target: staging
   }).done()
 
-  const stager = await helper.Stager.initialize(t)
+  const stager = await helper.Stager.initialize(t, { testnet })
   await stager.stage(staging)
   await stager.seed()
 
@@ -361,7 +366,7 @@ test('should detect update when appling is folder (MacOS)', async function (t) {
   await local.put(`/by-arch/${host}/app/test.app/test.txt`, Buffer.from('v1'))
   await local.close()
 
-  const stager = await helper.Stager.initialize(t)
+  const stager = await helper.Stager.initialize(t, { testnet })
   await stager.stage(staging)
   await stager.seed()
 
@@ -416,7 +421,7 @@ test('should not update when remote version is older', async function (t) {
   await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('old'))
   await local.close()
 
-  const stager = await helper.Stager.initialize(t)
+  const stager = await helper.Stager.initialize(t, { testnet })
   await stager.stage(staging)
   await stager.seed()
 
@@ -457,7 +462,7 @@ test('should emit error if update not found', async function (t) {
   const appFile = path.join(dir, 'test.txt')
   await fsp.writeFile(appFile, 'v1')
 
-  const stager = await helper.Stager.initialize(t)
+  const stager = await helper.Stager.initialize(t, { testnet })
   const store = new Corestore(path.join(dir, 'corestore'))
   const updater = new Updater({
     dir,
@@ -499,7 +504,7 @@ test('should update from prerelease to release', async function (t) {
   await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('release'))
   await local.close()
 
-  const stager = await helper.Stager.initialize(t)
+  const stager = await helper.Stager.initialize(t, { testnet })
   await stager.stage(staging)
   await stager.seed()
 
@@ -544,7 +549,7 @@ test('should delay update', async (t) => {
   await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('old'))
   await local.close()
 
-  const stager = await helper.Stager.initialize(t)
+  const stager = await helper.Stager.initialize(t, { testnet })
   await stager.stage(staging)
   await stager.seed()
 
@@ -608,6 +613,10 @@ async function buildWindowsExe(dir, name, version) {
 
   return path.join(out, name + '.exe')
 }
+
+unhookTestnet('destroy testnet', async () => {
+  await testnet.destroy()
+})
 
 async function exists(filename) {
   return fsp
