@@ -66,7 +66,7 @@
     "bare-env": "^3.0.0",
     "bare-os": "^3.7.0",
     "bare-subprocess": "^5.2.2",
-    "brittle": "^3.19.1",
+    "brittle": "^4.0.2",
     "corestore": "^7.9.1",
     "hyperswarm": "^4.17.0",
     "lunte": "^1.6.0",
