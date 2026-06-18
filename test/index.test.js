@@ -179,11 +179,7 @@ test('should continue updating when prefetch fails', async function (t) {
   updater.on('error', noop)
   const updated = new Promise((resolve) => updater.once('updated', resolve))
 
-  const swarm = new Hyperswarm({ bootstrap: stager.bootstrap })
-  swarm.on('connection', (c) => store.replicate(c))
-  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
-  await swarm.flush()
-  t.teardown(() => swarm.destroy())
+  await helper.createReplicator(t, { bootstrap: stager.bootstrap, updater })
 
   await updated
 
@@ -224,11 +220,7 @@ test('should not prefetch before updating to a newer version', async function (t
 
   const updated = new Promise((resolve) => updater.once('updated', resolve))
 
-  const swarm = new Hyperswarm({ bootstrap: stager.bootstrap })
-  swarm.on('connection', (c) => store.replicate(c))
-  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
-  await swarm.flush()
-  t.teardown(() => swarm.destroy())
+  await helper.createReplicator(t, { bootstrap: stager.bootstrap, updater })
 
   await updated
 
@@ -266,11 +258,7 @@ test('should detect update when remote version is newer', async function (t) {
   await updater.ready()
   t.teardown(() => updater.close())
 
-  const swarm = new Hyperswarm({ bootstrap: stager.bootstrap })
-  swarm.on('connection', (c) => store.replicate(c))
-  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
-  await swarm.flush()
-  t.teardown(() => swarm.destroy())
+  await helper.createReplicator(t, { bootstrap: stager.bootstrap, updater })
 
   t.is(updater.updated, false)
 
@@ -333,11 +321,7 @@ test('should apply update for Windows exe build', { skip: !isWindows }, async fu
   await updater.ready()
   t.teardown(() => updater.close())
 
-  const swarm = new Hyperswarm({ bootstrap: stager.bootstrap })
-  swarm.on('connection', (connection) => store.replicate(connection))
-  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
-  await swarm.flush()
-  t.teardown(() => swarm.destroy())
+  await helper.createReplicator(t, { bootstrap: stager.bootstrap, updater })
 
   t.is(updater.updated, false, 'initial matching version did not update')
 
@@ -400,11 +384,7 @@ test('should detect update when appling is folder (MacOS)', async function (t) {
   await updater.ready()
   t.teardown(() => updater.close())
 
-  const swarm = new Hyperswarm({ bootstrap: stager.bootstrap })
-  swarm.on('connection', (c) => store.replicate(c))
-  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
-  await swarm.flush()
-  t.teardown(() => swarm.destroy())
+  await helper.createReplicator(t, { bootstrap: stager.bootstrap, updater })
 
   t.is(updater.updated, false)
 
@@ -457,11 +437,7 @@ test('should not update when remote version is older', async function (t) {
   await updater.ready()
   t.teardown(() => updater.close())
 
-  const swarm = new Hyperswarm({ bootstrap: stager.bootstrap })
-  swarm.on('connection', (c) => store.replicate(c))
-  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
-  await swarm.flush()
-  t.teardown(() => swarm.destroy())
+  await helper.createReplicator(t, { bootstrap: stager.bootstrap, updater })
 
   await new Promise((resolve) => setTimeout(resolve, 3000))
 
@@ -509,11 +485,7 @@ test('should emit error if update not found', async function (t) {
     updater.on('updating', resolve)
   })
 
-  const swarm = new Hyperswarm({ bootstrap: stager.bootstrap })
-  t.teardown(async () => await swarm.destroy())
-  swarm.on('connection', (c) => store.replicate(c))
-  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
-  await swarm.flush()
+  await helper.createReplicator(t, { bootstrap: stager.bootstrap, updater })
 
   await t.exception(updated, /update not found/)
 })
@@ -550,12 +522,7 @@ test('should update from prerelease to release', async function (t) {
 
   const updated = new Promise((resolve) => updater.on('updated', resolve))
 
-  const keyPair = await store.createKeyPair('test')
-  const swarm = new Hyperswarm({ keyPair, bootstrap: stager.bootstrap })
-  swarm.on('connection', (c) => store.replicate(c))
-  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
-  await swarm.flush()
-  t.teardown(() => swarm.destroy())
+  await helper.createReplicator(t, { bootstrap: stager.bootstrap, updater })
 
   await updated
   t.is(updater.updated, true, 'prerelease updated to release')
@@ -600,11 +567,7 @@ test('should delay update', async (t) => {
 
   t.teardown(() => updater.close())
 
-  const swarm = new Hyperswarm({ bootstrap: stager.bootstrap })
-  swarm.on('connection', (c) => store.replicate(c))
-  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
-  await swarm.flush()
-  t.teardown(() => swarm.destroy())
+  await helper.createReplicator(t, { bootstrap: stager.bootstrap, updater })
 
   updater.on('update-scheduled', () => {
     t.pass()

@@ -99,5 +99,13 @@ module.exports = {
     }
 
     throw lastError || new Error(`Timed out after ${timeout}ms`)
+  },
+
+  async createReplicator(t, { bootstrap, updater }) {
+    const swarm = new Hyperswarm({ bootstrap })
+    swarm.on('connection', (c) => updater.store.replicate(c))
+    swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
+    await swarm.flush()
+    t.teardown(() => swarm.destroy())
   }
 }
