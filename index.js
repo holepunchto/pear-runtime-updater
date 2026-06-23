@@ -35,6 +35,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.drive = new Hyperdrive(this.store, this.key)
 
     this._start = Date.now()
+    this._updating = null
     this._bootGracePeriod = 60000
 
     this.next = null
@@ -50,7 +51,10 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     )
     this._scheduledUpdate = null
 
-    this._debouncedUpdate = debounceify(this._update.bind(this))
+    this._debouncedUpdate = debounceify(() => {
+      this._updating = this._update()
+      return this._updating
+    })
 
     this.ready().catch(noop)
   }
@@ -81,6 +85,8 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
   }
 
   async _close() {
+    if (this._updating) await this._updating
+    console.log('closing')
     await this.drive.close()
 
     if (!this.updates) return
@@ -110,7 +116,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
   }
 
   async _update() {
-    if (!this.updates) return
+    if (!this.updates || this._updating) return
 
     await this.drive.update()
 
@@ -169,6 +175,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.nextVersion = manifest.version
 
     this.updating = false
+    this._updating = null
     this.updated = true
     this.emit('updated')
   }
