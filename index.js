@@ -143,6 +143,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     if (!remote || current.compare(remote) >= 0) {
       this.checkout = null
       await co.close()
+      this._updating = null
       return
     }
 
