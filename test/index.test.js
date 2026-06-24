@@ -577,6 +577,8 @@ test('should delay update', async (t) => {
   updater.on('update-scheduled', () => {
     t.pass()
   })
+
+  await new Promise((resolve) => updater.on('updated', resolve))
 })
 
 async function buildWindowsExe(dir, name, version) {
