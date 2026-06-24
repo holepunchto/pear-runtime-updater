@@ -339,7 +339,7 @@ test('should apply update for Windows exe build', { skip: !isWindows }, async fu
   t.absent(await exists(path.join(runDir, `${appName}-1.0.1.exe`)), 'incoming exe was moved')
 })
 
-test('should detect update when appling is folder (MacOS)', async function (t) {
+test('should detect update when app is a folder (like in MacOS)', async function (t) {
   t.timeout(60_000)
 
   const staging = await t.tmp()
