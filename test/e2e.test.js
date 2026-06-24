@@ -53,7 +53,7 @@ test('should receive and apply update when update happens while app is running',
   t.timeout(300_000)
 
   t.comment('prepare stager')
-  const stager = await helper.Stager.initialize(t, { testnet })
+  const stager = await helper.createStager(t, { testnet })
   const link = stager.link
   t.ok(link, `prepared ${link}`)
 
@@ -231,7 +231,7 @@ test('should receive and apply update when update happens while app is not runni
   t.timeout(300_000)
 
   t.comment('prepare stager')
-  const stager = await helper.Stager.initialize(t, { testnet })
+  const stager = await helper.createStager(t, { testnet })
 
   const link = stager.link
   t.ok(link, `prepared ${link}`)
@@ -409,7 +409,7 @@ test('should update from prerelease to release', async (t) => {
   t.timeout(300_000)
 
   t.comment('prepare stager')
-  const stager = await helper.Stager.initialize(t, { testnet })
+  const stager = await helper.createStager(t, { testnet })
 
   const link = stager.link
   t.ok(link, `prepared ${link}`)

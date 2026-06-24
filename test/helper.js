@@ -13,20 +13,6 @@ module.exports = {
   createTestnet: createTestnet,
 
   Stager: class Stager extends ReadyResource {
-    static async initialize(t, { dir, testnet } = {}) {
-      if (!dir) dir = await t.tmp()
-      if (!testnet) {
-        testnet = await createTestnet()
-        t.teardown(() => testnet.destroy())
-      }
-
-      const stager = new this({ dir, testnet })
-      t.teardown(() => stager.close())
-      await stager.ready()
-
-      return stager
-    }
-
     constructor({ dir, testnet }) {
       super()
       this.dir = dir
@@ -101,11 +87,28 @@ module.exports = {
     throw lastError || new Error(`Timed out after ${timeout}ms`)
   },
 
+  async createStager(t, { dir, testnet } = {}) {
+    if (!dir) dir = await t.tmp()
+    if (!testnet) {
+      testnet = await createTestnet()
+      t.teardown(() => testnet.destroy())
+    }
+
+    const stager = new this.Stager({ dir, testnet })
+    t.teardown(() => stager.close())
+    await stager.ready()
+
+    return stager
+  },
+
   async createReplicator(t, { bootstrap, updater }) {
     const swarm = new Hyperswarm({ bootstrap })
     swarm.on('connection', (c) => updater.store.replicate(c))
+    t.teardown(() => swarm.destroy())
+
     swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
     await swarm.flush()
-    t.teardown(() => swarm.destroy())
+
+    return swarm
   }
 }
