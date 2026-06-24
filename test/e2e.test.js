@@ -44,11 +44,16 @@ function trustMsixCertificate(msixPath) {
   return helper.waitForExit(child)
 }
 
+let testnet
+const unhookTestnet = test.hook('create testnet', async () => {
+  testnet = await helper.createTestnet()
+})
+
 test('should receive and apply update when update happens while app is running', async (t) => {
   t.timeout(300_000)
 
   t.comment('prepare stager')
-  const stager = await helper.Stager.initialize(t)
+  const stager = await helper.Stager.initialize(t, { testnet })
   const link = stager.link
   t.ok(link, `prepared ${link}`)
 
@@ -226,7 +231,7 @@ test('should receive and apply update when update happens while app is not runni
   t.timeout(300_000)
 
   t.comment('prepare stager')
-  const stager = await helper.Stager.initialize(t)
+  const stager = await helper.Stager.initialize(t, { testnet })
 
   const link = stager.link
   t.ok(link, `prepared ${link}`)
@@ -404,7 +409,7 @@ test('should update from prerelease to release', async (t) => {
   t.timeout(300_000)
 
   t.comment('prepare stager')
-  const stager = await helper.Stager.initialize(t)
+  const stager = await helper.Stager.initialize(t, { testnet })
 
   const link = stager.link
   t.ok(link, `prepared ${link}`)
@@ -604,4 +609,8 @@ test('should update from prerelease to release', async (t) => {
   t.is(await startedVersion, '1.0.0', 'version matches updated value (1.0.0)')
 
   await t.execution(await exit, 'app exited successfully')
+})
+
+unhookTestnet('destroy testnet', async () => {
+  await testnet.destroy()
 })
