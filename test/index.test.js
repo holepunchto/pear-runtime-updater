@@ -4,7 +4,6 @@ const fsp = require('fs/promises')
 const Corestore = require('corestore')
 const Hyperdrive = require('hyperdrive')
 const Hyperswarm = require('hyperswarm')
-const Localdrive = require('localdrive')
 const { platform, arch, isWindows } = require('which-runtime')
 const pearBuild = require('pear-build')
 const bareBuild = require('bare-build')
@@ -23,18 +22,12 @@ const unhookTestnet = test.hook('create testnet', async () => {
 test('should prefetch the latest version on first run', async function (t) {
   t.timeout(120_000)
 
-  const staged = await t.tmp()
   const appName = `updater-${host}`
   const prefix = `/by-arch/${host}/app/${appName}`
-  const prefixDir = path.join(staged, 'by-arch', host, 'app', appName)
-
-  await fsp.mkdir(prefixDir, { recursive: true })
-  await fsp.writeFile(
-    path.join(staged, 'package.json'),
-    JSON.stringify({ version: '1.0.0' }, null, 2),
-    'utf8'
-  )
-  await fsp.writeFile(path.join(prefixDir, 'bundle.txt'), 'first run payload', 'utf8')
+  const staged = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '1.0.0' }),
+    [`${prefix}/bundle.txt`]: 'first run payload'
+  })
 
   const stager = await helper.createStager(t, { testnet })
   await stager.stage(staged)
@@ -67,18 +60,12 @@ test('should prefetch the latest version on first run', async function (t) {
 test('should prefetch the latest version after partial metadata sync', async function (t) {
   t.timeout(120_000)
 
-  const staged = await t.tmp()
   const appName = `updater-${host}`
   const prefix = `/by-arch/${host}/app/${appName}`
-  const prefixDir = path.join(staged, 'by-arch', host, 'app', appName)
-
-  await fsp.mkdir(prefixDir, { recursive: true })
-  await fsp.writeFile(
-    path.join(staged, 'package.json'),
-    JSON.stringify({ version: '1.0.0' }, null, 2),
-    'utf8'
-  )
-  await fsp.writeFile(path.join(prefixDir, 'bundle.txt'), 'partial sync payload', 'utf8')
+  const staged = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '1.0.0' }),
+    [`${prefix}/bundle.txt`]: 'partial sync payload'
+  })
 
   const stager = await helper.createStager(t, { testnet })
   await stager.stage(staged)
@@ -134,11 +121,10 @@ test('should prefetch the latest version after partial metadata sync', async fun
 test('should continue updating when prefetch fails', async function (t) {
   t.timeout(60_000)
 
-  const staging = await t.tmp()
-  const local = new Localdrive(staging)
-  await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.1' })))
-  await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('v2'))
-  await local.close()
+  const staging = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '1.0.1' }),
+    [`/by-arch/${host}/app/test.txt`]: 'v2'
+  })
 
   const stager = await helper.createStager(t, { testnet })
   await stager.stage(staging)
@@ -178,11 +164,10 @@ test('should continue updating when prefetch fails', async function (t) {
 test('should not prefetch before updating to a newer version', async function (t) {
   t.timeout(60_000)
 
-  const staging = await t.tmp()
-  const local = new Localdrive(staging)
-  await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.1' })))
-  await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('v2'))
-  await local.close()
+  const staging = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '1.0.1' }),
+    [`/by-arch/${host}/app/test.txt`]: 'v2'
+  })
 
   const stager = await helper.createStager(t, { testnet })
   await stager.stage(staging)
@@ -222,19 +207,17 @@ test('should not prefetch before updating to a newer version', async function (t
 test('should detect update when remote version is newer', async function (t) {
   t.timeout(60_000)
 
-  const staging = await t.tmp()
-  const local = new Localdrive(staging)
-  await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.0' })))
-  await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('v1'))
-  await local.close()
+  const staging = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '1.0.0' }),
+    [`/by-arch/${host}/app/test.txt`]: 'v1'
+  })
 
   const stager = await helper.createStager(t, { testnet })
   await stager.stage(staging)
   await stager.seed()
 
-  const dir = await t.tmp()
+  const dir = await helper.createTmpFixture(t, { '/test.txt': 'v1' })
   const appFile = path.join(dir, 'test.txt')
-  await fsp.writeFile(appFile, 'v1')
 
   const store = new Corestore(path.join(dir, 'corestore'))
   t.teardown(() => store.close())
@@ -257,11 +240,11 @@ test('should detect update when remote version is newer', async function (t) {
 
   const updated = new Promise((resolve) => updater.on('updated', resolve))
 
-  const staging2 = await t.tmp()
-  const local2 = new Localdrive(staging2)
-  await local2.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.1' })))
-  await local2.put(`/by-arch/${host}/app/test.txt`, Buffer.from('v2'))
-  await local2.close()
+  const staging2 = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '1.0.1' }),
+    [`/by-arch/${host}/app/test.txt`]: 'v2'
+  })
+
   await stager.stage(staging2)
 
   await updated
@@ -348,21 +331,18 @@ test('should apply update for Windows exe build', { skip: !isWindows }, async fu
 test('should detect update when app is a folder (like in MacOS)', async function (t) {
   t.timeout(60_000)
 
-  const staging = await t.tmp()
-  const local = new Localdrive(staging)
-  await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.0' })))
-  await local.put(`/by-arch/${host}/app/test.app/test.txt`, Buffer.from('v1'))
-  await local.close()
+  const staging = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '1.0.0' }),
+    [`/by-arch/${host}/app/test.app/test.txt`]: 'v1'
+  })
 
   const stager = await helper.createStager(t, { testnet })
   await stager.stage(staging)
   await stager.seed()
 
-  const dir = await t.tmp()
+  const dir = await helper.createTmpFixture(t, { '/test.app/test.txt': 'v1' })
   const appDir = path.join(dir, 'test.app')
-  await fsp.mkdir(appDir, { recursive: true })
   const appFile = path.join(appDir, 'test.txt')
-  await fsp.writeFile(appFile, 'v1')
 
   const store = new Corestore(path.join(dir, 'corestore'))
   t.teardown(() => store.close())
@@ -385,11 +365,11 @@ test('should detect update when app is a folder (like in MacOS)', async function
 
   const updated = new Promise((resolve) => updater.on('updated', resolve))
 
-  const staging2 = await t.tmp()
-  const local2 = new Localdrive(staging2)
-  await local2.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.1' })))
-  await local2.put(`/by-arch/${host}/app/test.app/test.txt`, Buffer.from('v2'))
-  await local2.close()
+  const staging2 = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '1.0.1' }),
+    [`/by-arch/${host}/app/test.app/test.txt`]: 'v2'
+  })
+
   await stager.stage(staging2)
 
   await updated
@@ -405,19 +385,17 @@ test('should detect update when app is a folder (like in MacOS)', async function
 test('should not update when remote version is older', async function (t) {
   t.timeout(60_000)
 
-  const staging = await t.tmp()
-  const local = new Localdrive(staging)
-  await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.0' })))
-  await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('old'))
-  await local.close()
+  const staging = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '1.0.0' }),
+    [`/by-arch/${host}/app/test.txt`]: 'old'
+  })
 
   const stager = await helper.createStager(t, { testnet })
   await stager.stage(staging)
   await stager.seed()
 
-  const dir = await t.tmp()
+  const dir = await helper.createTmpFixture(t, { '/test.txt': 'current' })
   const appFile = path.join(dir, 'test.txt')
-  await fsp.writeFile(appFile, 'current')
 
   const store = new Corestore(path.join(dir, 'corestore'))
   t.teardown(() => store.close())
@@ -450,9 +428,8 @@ test('should emit error if update not found', async function (t) {
   t.plan(1)
   t.timeout(60_000)
 
-  const dir = await t.tmp()
+  const dir = await helper.createTmpFixture(t, { '/test.txt': 'v1' })
   const appFile = path.join(dir, 'test.txt')
-  await fsp.writeFile(appFile, 'v1')
 
   const stager = await helper.createStager(t, { testnet })
   const store = new Corestore(path.join(dir, 'corestore'))
@@ -470,11 +447,10 @@ test('should emit error if update not found', async function (t) {
   await updater.ready()
   t.teardown(() => updater.close())
 
-  const staging = await t.tmp()
-  const local = new Localdrive(staging)
-  await local.put('/package.json', Buffer.from(JSON.stringify({ version: '2.0.0' })))
-  await local.put(`/by-arch/${host}/app/not_test.txt`, Buffer.from('v2'))
-  await local.close()
+  const staging = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '2.0.0' }),
+    [`/by-arch/${host}/app/not_test.txt`]: 'v2'
+  })
 
   await stager.stage(staging)
   await stager.seed()
@@ -492,19 +468,17 @@ test('should emit error if update not found', async function (t) {
 test('should update from prerelease to release', async function (t) {
   t.timeout(60_000)
 
-  const staging = await t.tmp()
-  const local = new Localdrive(staging)
-  await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.0' })))
-  await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('release'))
-  await local.close()
+  const staging = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '1.0.0' }),
+    [`/by-arch/${host}/app/test.txt`]: 'release'
+  })
 
   const stager = await helper.createStager(t, { testnet })
   await stager.stage(staging)
   await stager.seed()
 
-  const dir = await t.tmp()
+  const dir = await helper.createTmpFixture(t, { '/test.txt': 'prerelease' })
   const appFile = path.join(dir, 'test.txt')
-  await fsp.writeFile(appFile, 'prerelease')
 
   const store = new Corestore(path.join(dir, 'corestore'))
   t.teardown(() => store.close())
@@ -539,19 +513,17 @@ test('should delay update', async (t) => {
   t.timeout(60_000)
   t.plan(1)
 
-  const staging = await t.tmp()
-  const local = new Localdrive(staging)
-  await local.put('/package.json', Buffer.from(JSON.stringify({ version: '2.0.0' })))
-  await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('old'))
-  await local.close()
+  const staging = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '2.0.0' }),
+    [`/by-arch/${host}/app/test.txt`]: 'old'
+  })
 
   const stager = await helper.createStager(t, { testnet })
   await stager.stage(staging)
   await stager.seed()
 
-  const dir = await t.tmp()
+  const dir = await helper.createTmpFixture(t, { '/test.txt': 'current' })
   const appFile = path.join(dir, 'test.txt')
-  await fsp.writeFile(appFile, 'current')
   const delay = 5000
 
   const store = new Corestore(path.join(dir, 'corestore'))

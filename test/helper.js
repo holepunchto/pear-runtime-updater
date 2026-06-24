@@ -110,5 +110,14 @@ module.exports = {
     await swarm.flush()
 
     return swarm
+  },
+
+  async createTmpFixture(t, files) {
+    const output = await t.tmp()
+    const drive = new Localdrive(output)
+    for (const file in files) await drive.put(file, Buffer.from(files[file]))
+    await drive.close()
+
+    return output
   }
 }
