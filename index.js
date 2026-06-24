@@ -50,7 +50,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     )
     this._scheduledUpdate = null
 
-    this._debouncedUpdate = debounceify(this._update)
+    this._debouncedUpdate = debounceify(this._update.bind(this))
 
     this.ready().catch(noop)
   }
