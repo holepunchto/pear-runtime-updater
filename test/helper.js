@@ -115,7 +115,7 @@ module.exports = {
   async createTmpFixture(t, files) {
     const output = await t.tmp()
     const drive = new Localdrive(output)
-    for (const file in files) await drive.put(file, Buffer.from(files[file]))
+    for (const [file, content] of Object.entries(files)) await drive.put(file, Buffer.from(content))
     await drive.close()
 
     return output
