@@ -146,6 +146,8 @@ test('should continue updating when prefetch fails', async function (t) {
 
   const dir = await t.tmp()
   const store = new Corestore(path.join(dir, 'corestore'))
+  t.teardown(() => store.close())
+
   const updater = new Updater({
     dir,
     bundled: true,
@@ -188,6 +190,8 @@ test('should not prefetch before updating to a newer version', async function (t
 
   const dir = await t.tmp()
   const store = new Corestore(path.join(dir, 'corestore'))
+  t.teardown(() => store.close())
+
   const updater = new Updater({
     dir,
     bundled: true,
@@ -233,6 +237,8 @@ test('should detect update when remote version is newer', async function (t) {
   await fsp.writeFile(appFile, 'v1')
 
   const store = new Corestore(path.join(dir, 'corestore'))
+  t.teardown(() => store.close())
+
   const updater = new Updater({
     dir,
     app: appFile,
@@ -359,6 +365,8 @@ test('should detect update when app is a folder (like in MacOS)', async function
   await fsp.writeFile(appFile, 'v1')
 
   const store = new Corestore(path.join(dir, 'corestore'))
+  t.teardown(() => store.close())
+
   const updater = new Updater({
     dir,
     app: appDir,
@@ -412,6 +420,8 @@ test('should not update when remote version is older', async function (t) {
   await fsp.writeFile(appFile, 'current')
 
   const store = new Corestore(path.join(dir, 'corestore'))
+  t.teardown(() => store.close())
+
   const updater = new Updater({
     dir,
     app: appFile,
@@ -446,6 +456,8 @@ test('should emit error if update not found', async function (t) {
 
   const stager = await helper.createStager(t, { testnet })
   const store = new Corestore(path.join(dir, 'corestore'))
+  t.teardown(() => store.close())
+
   const updater = new Updater({
     dir,
     app: appFile,
@@ -495,6 +507,8 @@ test('should update from prerelease to release', async function (t) {
   await fsp.writeFile(appFile, 'prerelease')
 
   const store = new Corestore(path.join(dir, 'corestore'))
+  t.teardown(() => store.close())
+
   const updater = new Updater({
     dir,
     app: appFile,
@@ -541,6 +555,8 @@ test('should delay update', async (t) => {
   const delay = 5000
 
   const store = new Corestore(path.join(dir, 'corestore'))
+  t.teardown(() => store.close())
+
   const updater = new Updater({
     dir,
     app: appFile,
