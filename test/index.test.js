@@ -56,16 +56,7 @@ test('should prefetch the latest version on first run', async function (t) {
   await updater.ready()
   t.teardown(() => updater.close())
 
-  const swarm = new Hyperswarm({ bootstrap: stager.bootstrap })
-  swarm.on('connection', (connection) => store.replicate(connection))
-  t.teardown(() => swarm.destroy())
-
-  const discovery = swarm.join(updater.drive.core.discoveryKey, {
-    client: true,
-    server: false
-  })
-  await discovery.flushed()
-  t.teardown(() => discovery.destroy())
+  await helper.createReplicator(t, { bootstrap: stager.bootstrap, updater })
 
   await helper.waitFor(async () => {
     if (updater.drive.core.length < stager.drive.version) return false
@@ -132,16 +123,7 @@ test('should prefetch the latest version after partial metadata sync', async fun
   await updater.ready()
   t.teardown(() => updater.close())
 
-  const swarm = new Hyperswarm({ bootstrap: stager.bootstrap })
-  swarm.on('connection', (connection) => store.replicate(connection))
-  t.teardown(() => swarm.destroy())
-
-  const discovery = swarm.join(updater.drive.core.discoveryKey, {
-    client: true,
-    server: false
-  })
-  await discovery.flushed()
-  t.teardown(() => discovery.destroy())
+  await helper.createReplicator(t, { bootstrap: stager.bootstrap, updater })
 
   await helper.waitFor(async () => {
     if (updater.drive.core.length < stager.drive.version) return false
