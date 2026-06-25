@@ -81,6 +81,7 @@ test('should receive and apply update when update happens while app is running',
   }
   if (isMac) appBuildPath = path.join(app, 'out', `Updater-${host}`, 'Updater.app')
   if (isWindows) appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'Updater.msix')
+  t.ok(await exists(appBuildPath), 'app build exists')
 
   t.comment(isWindows ? 'trust and install app' : 'copy build to run dir')
   const runDir = await t.tmp()
@@ -170,6 +171,7 @@ test('should receive and apply update when update happens while app is running',
   if (isLinux) {
     await fsp.rename(path.join(app, 'out', 'make', `Updater-1.0.1-${arch}.AppImage`), appBuildPath)
   }
+  t.ok(await exists(appBuildPath), 'app build exists')
 
   t.comment('rerun pear-build')
   await t.execution(
@@ -260,6 +262,7 @@ test('should receive and apply update when update happens while app is not runni
   }
   if (isMac) appBuildPath = path.join(app, 'out', `Updater-${host}`, 'Updater.app')
   if (isWindows) appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'Updater.msix')
+  t.ok(await exists(appBuildPath), 'app build exists')
 
   t.comment(isWindows ? 'trust and install app' : 'copy build to run dir')
   const runDir = await t.tmp()
@@ -321,6 +324,7 @@ test('should receive and apply update when update happens while app is not runni
   if (isLinux) {
     await fsp.rename(path.join(app, 'out', 'make', `Updater-1.0.1-${arch}.AppImage`), appBuildPath)
   }
+  t.ok(await exists(appBuildPath), 'app build exists')
 
   t.comment('rerun pear-build')
   await t.execution(
@@ -453,6 +457,7 @@ test('should update from prerelease to release', async (t) => {
   }
   if (isMac) appBuildPath = path.join(app, 'out', `Updater-${host}`, 'Updater.app')
   if (isWindows) appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'Updater.msix')
+  t.ok(await exists(appBuildPath), 'app build exists')
 
   t.comment(isWindows ? 'trust and install app' : 'copy build to run dir')
   const runDir = await t.tmp()
@@ -526,6 +531,7 @@ test('should update from prerelease to release', async (t) => {
   if (isLinux) {
     await fsp.rename(path.join(app, 'out', 'make', `Updater-1.0.0-${arch}.AppImage`), appBuildPath)
   }
+  t.ok(await exists(appBuildPath), 'app build exists')
 
   t.comment('rerun pear-build')
   await t.execution(
@@ -614,3 +620,10 @@ test('should update from prerelease to release', async (t) => {
 unhookTestnet('destroy testnet', async () => {
   await testnet.destroy()
 })
+
+function exists(filename) {
+  return fsp
+    .access(filename)
+    .then(() => true)
+    .catch(() => false)
+}
