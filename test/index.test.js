@@ -590,7 +590,7 @@ unhookTestnet('destroy testnet', async () => {
   await testnet.destroy()
 })
 
-async function exists(filename) {
+function exists(filename) {
   return fsp
     .access(filename)
     .then(() => true)
