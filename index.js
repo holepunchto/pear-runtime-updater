@@ -221,13 +221,11 @@ function prefixFor(host, name) {
   return `/by-arch/${host}/app/${name}`
 }
 
-async function exists(filename) {
-  try {
-    await fsp.access(filename)
-    return true
-  } catch {
-    return false
-  }
+function exists(filename) {
+  return fsp
+    .access(filename)
+    .then(() => true)
+    .catch(() => false)
 }
 
 function noop() {}
