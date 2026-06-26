@@ -191,7 +191,7 @@ test('should receive and apply update when update happens while app is running',
   await t.execution(updated, 'got updated message')
 
   t.comment('wait for exit')
-  await t.execution(exit, 'app exited successfully')
+  await t.execution(await exit, 'app exited successfully')
 
   if (isWindows) {
     t.comment('give time for MSIX installer to finish')
@@ -221,7 +221,7 @@ test('should receive and apply update when update happens while app is running',
 
   t.is(await startedVersion, '1.0.1', 'version matches updated value (1.0.1)')
 
-  await t.execution(exit, 'app exited successfully')
+  await t.execution(await exit, 'app exited successfully')
 })
 
 test('should receive and apply update when update happens while app is not running', async (t) => {
@@ -371,7 +371,7 @@ test('should receive and apply update when update happens while app is not runni
   await t.execution(updated, 'got updated message')
 
   t.comment('wait for exit')
-  await t.execution(exit, 'app exited successfully')
+  await t.execution(await exit, 'app exited successfully')
 
   if (isWindows) {
     t.comment('give time for MSIX installer to finish')
@@ -401,7 +401,7 @@ test('should receive and apply update when update happens while app is not runni
 
   t.is(await startedVersion, '1.0.1', 'version matches updated value (1.0.1)')
 
-  await t.execution(exit, 'app exited successfully')
+  await t.execution(await exit, 'app exited successfully')
 })
 
 test('should update from prerelease to release', async (t) => {
@@ -579,7 +579,7 @@ test('should update from prerelease to release', async (t) => {
   await t.execution(updated, 'got updated message')
 
   t.comment('wait for exit')
-  await t.execution(exit, 'app exited successfully')
+  await t.execution(await exit, 'app exited successfully')
 
   if (isWindows) {
     t.comment('give time for MSIX installer to finish')
@@ -609,7 +609,7 @@ test('should update from prerelease to release', async (t) => {
 
   t.is(await startedVersion, '1.0.0', 'version matches updated value (1.0.0)')
 
-  await t.execution(exit, 'app exited successfully')
+  await t.execution(await exit, 'app exited successfully')
 })
 
 function exists(filename) {
