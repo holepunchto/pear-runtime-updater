@@ -60,10 +60,24 @@ module.exports = {
   },
 
   waitForExit(child) {
+    let stderr = ''
+    let stdout = ''
+    if (child.stderr)
+      child.stderr.on('data', (data) => {
+        stderr += data.toString()
+      })
+    if (child.stdout)
+      child.stdout.on('data', (data) => {
+        stdout += data.toString()
+      })
     return new Promise((resolve, reject) => {
       child.on('exit', (code) => {
         if (code === 0) resolve()
-        else reject(new Error(`Failed with exit code ${code}`))
+        else {
+          console.error(`stdout:\n${stdout}`)
+          console.error(`stderr:\n${stderr}`)
+          reject(new Error(`Failed with exit code ${code}`))
+        }
       })
       child.on('error', reject)
     })
