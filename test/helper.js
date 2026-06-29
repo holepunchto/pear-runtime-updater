@@ -59,8 +59,8 @@ module.exports = {
     }
   },
 
-  async waitForExit(child) {
-    await new Promise((resolve, reject) => {
+  waitForExit(child) {
+    return new Promise((resolve, reject) => {
       child.on('exit', (code) => {
         if (code === 0) resolve()
         else reject(new Error(`Failed with exit code ${code}`))
