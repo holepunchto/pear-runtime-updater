@@ -13,6 +13,8 @@ const fixture = path.join(__dirname, 'fixtures', 'updater')
 const npm = isWindows ? 'npm.cmd' : 'npm'
 const powershell = 'pwsh.exe'
 
+// sanity check do not merge
+
 function getInstalledMsixExe(name) {
   const result = spawnSync(powershell, [
     '-Command',
