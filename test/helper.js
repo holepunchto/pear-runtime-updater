@@ -1,6 +1,7 @@
 const createTestnet = require('@hyperswarm/testnet')
 const { platform, arch } = require('which-runtime')
 const path = require('path')
+const os = require('os')
 const Localdrive = require('localdrive')
 const ReadyResource = require('ready-resource')
 const Corestore = require('corestore')
@@ -71,7 +72,8 @@ module.exports = {
       })
     }
     return new Promise((resolve, reject) => {
-      child.on('exit', (code) => {
+      child.on('exit', (code, signal) => {
+        if (signal) code = this.normalizeSignal(signal) + 128
         if (code === 0) {
           resolve()
         } else {
@@ -134,5 +136,10 @@ module.exports = {
     await drive.close()
 
     return output
+  },
+
+  normalizeSignal(signal) {
+    if (typeof signal === 'number') return signal
+    return os.constants.signals[signal] ?? 0
   }
 }
