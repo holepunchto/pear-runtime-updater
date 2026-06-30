@@ -63,7 +63,7 @@ module.exports = {
   waitForExit(child, { logOnError = true } = {}) {
     let stderr = ''
     let stdout = ''
-    if (logOnError) {
+    if (logOnError && child.stderr && child.stdout) {
       child.stderr.on('data', (data) => {
         stderr += data.toString()
       })
