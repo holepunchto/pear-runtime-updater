@@ -1,7 +1,7 @@
 const Hyperdrive = require('hyperdrive')
 const Localdrive = require('localdrive')
 const path = require('path')
-const fs = require('fs')
+const fsp = require('fs/promises')
 const fsx = require('fs-native-extensions')
 const ReadyResource = require('ready-resource')
 const link = require('pear-link')
@@ -60,7 +60,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     if (!this.updates) return
 
     if (this.bundled) {
-      await fs.promises.rm(path.join(this.dir, 'pear-runtime/next'), {
+      await fsp.rm(path.join(this.dir, 'pear-runtime/next'), {
         recursive: true,
         force: true
       })
@@ -106,7 +106,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     } else {
       await fsx.swap(nextApp, this.app)
     }
-    await fs.promises.rm(this.next, { recursive: true, force: true })
+    await fsp.rm(this.next, { recursive: true, force: true })
   }
 
   async _update() {
@@ -201,15 +201,15 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     const previous = path.join(dir, `${base}-${this.version}${ext}`)
     const incoming = path.join(dir, `${base}-${this.nextVersion}${ext}`)
 
-    await fs.promises.copyFile(nextApp, incoming)
+    await fsp.copyFile(nextApp, incoming)
 
     try {
-      await fs.promises.rename(this.app, previous)
-      await fs.promises.rename(incoming, this.app)
+      await fsp.rename(this.app, previous)
+      await fsp.rename(incoming, this.app)
     } catch (err) {
       if (!(await exists(this.app)) && (await exists(previous))) {
         try {
-          await fs.promises.rename(previous, this.app)
+          await fsp.rename(previous, this.app)
         } catch {}
       }
       throw err
@@ -221,13 +221,11 @@ function prefixFor(host, name) {
   return `/by-arch/${host}/app/${name}`
 }
 
-async function exists(filename) {
-  try {
-    await fs.promises.access(filename)
-    return true
-  } catch {
-    return false
-  }
+function exists(filename) {
+  return fsp
+    .access(filename)
+    .then(() => true)
+    .catch(() => false)
 }
 
 function noop() {}

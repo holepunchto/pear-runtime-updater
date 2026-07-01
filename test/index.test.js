@@ -1,11 +1,9 @@
 const test = require('brittle')
 const path = require('path')
-const fs = require('fs')
-const tmpDir = require('test-tmp')
+const fsp = require('fs/promises')
 const Corestore = require('corestore')
 const Hyperdrive = require('hyperdrive')
 const Hyperswarm = require('hyperswarm')
-const Localdrive = require('localdrive')
 const { platform, arch, isWindows } = require('which-runtime')
 const pearBuild = require('pear-build')
 const bareBuild = require('bare-build')
@@ -16,35 +14,26 @@ const host = platform + '-' + arch
 const windowsHost = 'win32-' + arch
 const windowsAppOption = 'win32' + arch.charAt(0).toUpperCase() + arch.slice(1) + 'App'
 
+let testnet
+const unhookTestnet = test.hook('create testnet', async () => {
+  testnet = await helper.createTestnet()
+})
+
 test('should prefetch the latest version on first run', async function (t) {
   t.timeout(120_000)
 
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
-
-  const stagerDir = await tmpDir(t)
-  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
-  await stager.ready()
-  t.teardown(() => stager.close())
-
-  const staged = await tmpDir(t)
   const appName = `updater-${host}`
   const prefix = `/by-arch/${host}/app/${appName}`
-  const prefixDir = path.join(staged, 'by-arch', host, 'app', appName)
+  const staged = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '1.0.0' }),
+    [`${prefix}/bundle.txt`]: 'first run payload'
+  })
 
-  await fs.promises.mkdir(prefixDir, { recursive: true })
-  await fs.promises.writeFile(
-    path.join(staged, 'package.json'),
-    JSON.stringify({ version: '1.0.0' }, null, 2),
-    'utf8'
-  )
-  await fs.promises.writeFile(path.join(prefixDir, 'bundle.txt'), 'first run payload', 'utf8')
-
+  const stager = await helper.createStager(t, { testnet })
   await stager.stage(staged)
   await stager.seed()
 
-  const dir = await tmpDir(t)
+  const dir = await t.tmp()
   const store = new Corestore(path.join(dir, 'pear-runtime/corestore'))
   t.teardown(() => store.close())
 
@@ -60,16 +49,7 @@ test('should prefetch the latest version on first run', async function (t) {
   await updater.ready()
   t.teardown(() => updater.close())
 
-  const swarm = new Hyperswarm({ bootstrap })
-  swarm.on('connection', (connection) => store.replicate(connection))
-  t.teardown(() => swarm.destroy())
-
-  const discovery = swarm.join(updater.drive.core.discoveryKey, {
-    client: true,
-    server: false
-  })
-  await discovery.flushed()
-  t.teardown(() => discovery.destroy())
+  await helper.createReplicator(t, { bootstrap: stager.bootstrap, updater })
 
   await helper.waitFor(async () => {
     if (updater.drive.core.length < stager.drive.version) return false
@@ -80,38 +60,24 @@ test('should prefetch the latest version on first run', async function (t) {
 test('should prefetch the latest version after partial metadata sync', async function (t) {
   t.timeout(120_000)
 
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
-
-  const stagerDir = await tmpDir(t)
-  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
-  await stager.ready()
-  t.teardown(() => stager.close())
-
-  const staged = await tmpDir(t)
   const appName = `updater-${host}`
   const prefix = `/by-arch/${host}/app/${appName}`
-  const prefixDir = path.join(staged, 'by-arch', host, 'app', appName)
+  const staged = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '1.0.0' }),
+    [`${prefix}/bundle.txt`]: 'partial sync payload'
+  })
 
-  await fs.promises.mkdir(prefixDir, { recursive: true })
-  await fs.promises.writeFile(
-    path.join(staged, 'package.json'),
-    JSON.stringify({ version: '1.0.0' }, null, 2),
-    'utf8'
-  )
-  await fs.promises.writeFile(path.join(prefixDir, 'bundle.txt'), 'partial sync payload', 'utf8')
-
+  const stager = await helper.createStager(t, { testnet })
   await stager.stage(staged)
   await stager.seed()
 
-  const dir = await tmpDir(t)
+  const dir = await t.tmp()
   {
     const store = new Corestore(path.join(dir, 'pear-runtime/corestore'))
     const drive = new Hyperdrive(store, stager.drive.key)
     await drive.ready()
 
-    const swarm = new Hyperswarm({ bootstrap })
+    const swarm = new Hyperswarm({ bootstrap: stager.bootstrap })
     swarm.on('connection', (connection) => store.replicate(connection))
 
     const discovery = swarm.join(drive.core.discoveryKey, {
@@ -144,16 +110,7 @@ test('should prefetch the latest version after partial metadata sync', async fun
   await updater.ready()
   t.teardown(() => updater.close())
 
-  const swarm = new Hyperswarm({ bootstrap })
-  swarm.on('connection', (connection) => store.replicate(connection))
-  t.teardown(() => swarm.destroy())
-
-  const discovery = swarm.join(updater.drive.core.discoveryKey, {
-    client: true,
-    server: false
-  })
-  await discovery.flushed()
-  t.teardown(() => discovery.destroy())
+  await helper.createReplicator(t, { bootstrap: stager.bootstrap, updater })
 
   await helper.waitFor(async () => {
     if (updater.drive.core.length < stager.drive.version) return false
@@ -164,25 +121,19 @@ test('should prefetch the latest version after partial metadata sync', async fun
 test('should continue updating when prefetch fails', async function (t) {
   t.timeout(60_000)
 
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
+  const staging = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '1.0.1' }),
+    [`/by-arch/${host}/app/test.txt`]: 'v2'
+  })
 
-  const stagerDir = await tmpDir(t)
-  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
-  await stager.ready()
-  t.teardown(() => stager.close())
-
-  const staging = await tmpDir(t)
-  const local = new Localdrive(staging)
-  await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.1' })))
-  await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('v2'))
-  await local.close()
+  const stager = await helper.createStager(t, { testnet })
   await stager.stage(staging)
   await stager.seed()
 
-  const dir = await tmpDir(t)
+  const dir = await t.tmp()
   const store = new Corestore(path.join(dir, 'corestore'))
+  t.teardown(() => store.close())
+
   const updater = new Updater({
     dir,
     bundled: true,
@@ -203,11 +154,7 @@ test('should continue updating when prefetch fails', async function (t) {
   updater.on('error', noop)
   const updated = new Promise((resolve) => updater.once('updated', resolve))
 
-  const swarm = new Hyperswarm({ bootstrap })
-  swarm.on('connection', (c) => store.replicate(c))
-  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
-  await swarm.flush()
-  t.teardown(() => swarm.destroy())
+  await helper.createReplicator(t, { bootstrap: stager.bootstrap, updater })
 
   await updated
 
@@ -217,25 +164,19 @@ test('should continue updating when prefetch fails', async function (t) {
 test('should not prefetch before updating to a newer version', async function (t) {
   t.timeout(60_000)
 
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
+  const staging = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '1.0.1' }),
+    [`/by-arch/${host}/app/test.txt`]: 'v2'
+  })
 
-  const stagerDir = await tmpDir(t)
-  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
-  await stager.ready()
-  t.teardown(() => stager.close())
-
-  const staging = await tmpDir(t)
-  const local = new Localdrive(staging)
-  await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.1' })))
-  await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('v2'))
-  await local.close()
+  const stager = await helper.createStager(t, { testnet })
   await stager.stage(staging)
   await stager.seed()
 
-  const dir = await tmpDir(t)
+  const dir = await t.tmp()
   const store = new Corestore(path.join(dir, 'corestore'))
+  t.teardown(() => store.close())
+
   const updater = new Updater({
     dir,
     bundled: true,
@@ -255,11 +196,7 @@ test('should not prefetch before updating to a newer version', async function (t
 
   const updated = new Promise((resolve) => updater.once('updated', resolve))
 
-  const swarm = new Hyperswarm({ bootstrap })
-  swarm.on('connection', (c) => store.replicate(c))
-  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
-  await swarm.flush()
-  t.teardown(() => swarm.destroy())
+  await helper.createReplicator(t, { bootstrap: stager.bootstrap, updater })
 
   await updated
 
@@ -270,28 +207,21 @@ test('should not prefetch before updating to a newer version', async function (t
 test('should detect update when remote version is newer', async function (t) {
   t.timeout(60_000)
 
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
+  const staging = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '1.0.0' }),
+    [`/by-arch/${host}/app/test.txt`]: 'v1'
+  })
 
-  const stagerDir = await tmpDir(t)
-  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
-  await stager.ready()
-  t.teardown(() => stager.close())
-
-  const staging = await tmpDir(t)
-  const local = new Localdrive(staging)
-  await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.0' })))
-  await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('v1'))
-  await local.close()
+  const stager = await helper.createStager(t, { testnet })
   await stager.stage(staging)
   await stager.seed()
 
-  const dir = await tmpDir(t)
+  const dir = await helper.createTmpFixture(t, { '/test.txt': 'v1' })
   const appFile = path.join(dir, 'test.txt')
-  await fs.promises.writeFile(appFile, 'v1')
 
   const store = new Corestore(path.join(dir, 'corestore'))
+  t.teardown(() => store.close())
+
   const updater = new Updater({
     dir,
     app: appFile,
@@ -304,21 +234,17 @@ test('should detect update when remote version is newer', async function (t) {
   await updater.ready()
   t.teardown(() => updater.close())
 
-  const swarm = new Hyperswarm({ bootstrap })
-  swarm.on('connection', (c) => store.replicate(c))
-  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
-  await swarm.flush()
-  t.teardown(() => swarm.destroy())
+  await helper.createReplicator(t, { bootstrap: stager.bootstrap, updater })
 
   t.is(updater.updated, false)
 
   const updated = new Promise((resolve) => updater.on('updated', resolve))
 
-  const staging2 = await tmpDir(t)
-  const local2 = new Localdrive(staging2)
-  await local2.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.1' })))
-  await local2.put(`/by-arch/${host}/app/test.txt`, Buffer.from('v2'))
-  await local2.close()
+  const staging2 = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '1.0.1' }),
+    [`/by-arch/${host}/app/test.txt`]: 'v2'
+  })
+
   await stager.stage(staging2)
 
   await updated
@@ -326,7 +252,7 @@ test('should detect update when remote version is newer', async function (t) {
 
   if (!isWindows) {
     await updater.applyUpdate()
-    const content = await fs.promises.readFile(appFile, 'utf8')
+    const content = await fsp.readFile(appFile, 'utf8')
     t.is(content, 'v2', 'file was swapped to new version')
   }
 })
@@ -334,35 +260,28 @@ test('should detect update when remote version is newer', async function (t) {
 test('should apply update for Windows exe build', { skip: !isWindows }, async function (t) {
   t.timeout(120_000)
 
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
-
-  const stagerDir = await tmpDir(t)
-  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
-  await stager.ready()
-  t.teardown(() => stager.close())
-
   const appName = 'updater-bare'
   const exeName = appName + '.exe'
-  const app = await tmpDir(t)
+  const app = await t.tmp()
 
   const v1Exe = await buildWindowsExe(app, appName, '1.0.0')
-  const runDir = await tmpDir(t)
+  const runDir = await t.tmp()
   const appFile = path.join(runDir, exeName)
-  await fs.promises.copyFile(v1Exe, appFile)
-  const v1 = await fs.promises.readFile(appFile)
+  await fsp.copyFile(v1Exe, appFile)
+  const v1 = await fsp.readFile(appFile)
 
-  const staging = await tmpDir(t)
+  const staging = await t.tmp()
   await pearBuild({
     package: path.join(app, 'package.json'),
     [windowsAppOption]: v1Exe,
     target: staging
   }).done()
+
+  const stager = await helper.createStager(t, { testnet })
   await stager.stage(staging)
   await stager.seed()
 
-  const dir = await tmpDir(t)
+  const dir = await t.tmp()
   const store = new Corestore(path.join(dir, 'corestore'))
   t.teardown(() => store.close())
 
@@ -378,11 +297,7 @@ test('should apply update for Windows exe build', { skip: !isWindows }, async fu
   await updater.ready()
   t.teardown(() => updater.close())
 
-  const swarm = new Hyperswarm({ bootstrap })
-  swarm.on('connection', (connection) => store.replicate(connection))
-  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
-  await swarm.flush()
-  t.teardown(() => swarm.destroy())
+  await helper.createReplicator(t, { bootstrap: stager.bootstrap, updater })
 
   t.is(updater.updated, false, 'initial matching version did not update')
 
@@ -392,8 +307,8 @@ test('should apply update for Windows exe build', { skip: !isWindows }, async fu
   })
 
   const v2Exe = await buildWindowsExe(app, appName, '1.0.1')
-  const v2 = await fs.promises.readFile(v2Exe)
-  await fs.promises.rm(staging, { recursive: true, force: true })
+  const v2 = await fsp.readFile(v2Exe)
+  await fsp.rm(staging, { recursive: true, force: true })
   await pearBuild({
     package: path.join(app, 'package.json'),
     [windowsAppOption]: v2Exe,
@@ -404,42 +319,34 @@ test('should apply update for Windows exe build', { skip: !isWindows }, async fu
   await updated
   await updater.applyUpdate()
 
-  t.alike(await fs.promises.readFile(appFile), v2, 'exe was replaced with v2 build')
+  t.alike(await fsp.readFile(appFile), v2, 'exe was replaced with v2 build')
   t.alike(
-    await fs.promises.readFile(path.join(runDir, `${appName}-1.0.0.exe`)),
+    await fsp.readFile(path.join(runDir, `${appName}-1.0.0.exe`)),
     v1,
     'v1 exe was kept as versioned backup'
   )
   t.absent(await exists(path.join(runDir, `${appName}-1.0.1.exe`)), 'incoming exe was moved')
 })
 
-test('should detect update when appling is folder (MacOS)', async function (t) {
+test('should detect update when app is a folder (like in MacOS)', async function (t) {
   t.timeout(60_000)
 
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
+  const staging = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '1.0.0' }),
+    [`/by-arch/${host}/app/test.app/test.txt`]: 'v1'
+  })
 
-  const stagerDir = await tmpDir(t)
-  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
-  await stager.ready()
-  t.teardown(() => stager.close())
-
-  const staging = await tmpDir(t)
-  const local = new Localdrive(staging)
-  await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.0' })))
-  await local.put(`/by-arch/${host}/app/test.app/test.txt`, Buffer.from('v1'))
-  await local.close()
+  const stager = await helper.createStager(t, { testnet })
   await stager.stage(staging)
   await stager.seed()
 
-  const dir = await tmpDir(t)
+  const dir = await helper.createTmpFixture(t, { '/test.app/test.txt': 'v1' })
   const appDir = path.join(dir, 'test.app')
-  await fs.promises.mkdir(appDir, { recursive: true })
   const appFile = path.join(appDir, 'test.txt')
-  await fs.promises.writeFile(appFile, 'v1')
 
   const store = new Corestore(path.join(dir, 'corestore'))
+  t.teardown(() => store.close())
+
   const updater = new Updater({
     dir,
     app: appDir,
@@ -452,21 +359,17 @@ test('should detect update when appling is folder (MacOS)', async function (t) {
   await updater.ready()
   t.teardown(() => updater.close())
 
-  const swarm = new Hyperswarm({ bootstrap })
-  swarm.on('connection', (c) => store.replicate(c))
-  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
-  await swarm.flush()
-  t.teardown(() => swarm.destroy())
+  await helper.createReplicator(t, { bootstrap: stager.bootstrap, updater })
 
   t.is(updater.updated, false)
 
   const updated = new Promise((resolve) => updater.on('updated', resolve))
 
-  const staging2 = await tmpDir(t)
-  const local2 = new Localdrive(staging2)
-  await local2.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.1' })))
-  await local2.put(`/by-arch/${host}/app/test.app/test.txt`, Buffer.from('v2'))
-  await local2.close()
+  const staging2 = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '1.0.1' }),
+    [`/by-arch/${host}/app/test.app/test.txt`]: 'v2'
+  })
+
   await stager.stage(staging2)
 
   await updated
@@ -474,7 +377,7 @@ test('should detect update when appling is folder (MacOS)', async function (t) {
 
   if (!isWindows) {
     await updater.applyUpdate()
-    const content = await fs.promises.readFile(appFile, 'utf8')
+    const content = await fsp.readFile(appFile, 'utf8')
     t.is(content, 'v2', 'file was swapped to new version')
   }
 })
@@ -482,28 +385,21 @@ test('should detect update when appling is folder (MacOS)', async function (t) {
 test('should not update when remote version is older', async function (t) {
   t.timeout(60_000)
 
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
+  const staging = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '1.0.0' }),
+    [`/by-arch/${host}/app/test.txt`]: 'old'
+  })
 
-  const stagerDir = await tmpDir(t)
-  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
-  await stager.ready()
-  t.teardown(() => stager.close())
-
-  const staging = await tmpDir(t)
-  const local = new Localdrive(staging)
-  await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.0' })))
-  await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('old'))
-  await local.close()
+  const stager = await helper.createStager(t, { testnet })
   await stager.stage(staging)
   await stager.seed()
 
-  const dir = await tmpDir(t)
+  const dir = await helper.createTmpFixture(t, { '/test.txt': 'current' })
   const appFile = path.join(dir, 'test.txt')
-  await fs.promises.writeFile(appFile, 'current')
 
   const store = new Corestore(path.join(dir, 'corestore'))
+  t.teardown(() => store.close())
+
   const updater = new Updater({
     dir,
     app: appFile,
@@ -516,18 +412,14 @@ test('should not update when remote version is older', async function (t) {
   await updater.ready()
   t.teardown(() => updater.close())
 
-  const swarm = new Hyperswarm({ bootstrap })
-  swarm.on('connection', (c) => store.replicate(c))
-  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
-  await swarm.flush()
-  t.teardown(() => swarm.destroy())
+  await helper.createReplicator(t, { bootstrap: stager.bootstrap, updater })
 
   await new Promise((resolve) => setTimeout(resolve, 3000))
 
   t.is(updater.updated, false, 'should not update to older version')
 
   if (!isWindows) {
-    const content = await fs.promises.readFile(appFile, 'utf8')
+    const content = await fsp.readFile(appFile, 'utf8')
     t.is(content, 'current', 'file unchanged')
   }
 })
@@ -536,20 +428,13 @@ test('should emit error if update not found', async function (t) {
   t.plan(1)
   t.timeout(60_000)
 
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
-
-  const stagerDir = await tmpDir(t)
-  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
-  await stager.ready()
-  t.teardown(() => stager.close())
-
-  const dir = await tmpDir(t)
+  const dir = await helper.createTmpFixture(t, { '/test.txt': 'v1' })
   const appFile = path.join(dir, 'test.txt')
-  await fs.promises.writeFile(appFile, 'v1')
 
+  const stager = await helper.createStager(t, { testnet })
   const store = new Corestore(path.join(dir, 'corestore'))
+  t.teardown(() => store.close())
+
   const updater = new Updater({
     dir,
     app: appFile,
@@ -562,11 +447,11 @@ test('should emit error if update not found', async function (t) {
   await updater.ready()
   t.teardown(() => updater.close())
 
-  const staging = await tmpDir(t)
-  const local = new Localdrive(staging)
-  await local.put('/package.json', Buffer.from(JSON.stringify({ version: '2.0.0' })))
-  await local.put(`/by-arch/${host}/app/not_test.txt`, Buffer.from('v2'))
-  await local.close()
+  const staging = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '2.0.0' }),
+    [`/by-arch/${host}/app/not_test.txt`]: 'v2'
+  })
+
   await stager.stage(staging)
   await stager.seed()
 
@@ -575,11 +460,7 @@ test('should emit error if update not found', async function (t) {
     updater.on('updating', resolve)
   })
 
-  const swarm = new Hyperswarm({ bootstrap })
-  t.teardown(async () => await swarm.destroy())
-  swarm.on('connection', (c) => store.replicate(c))
-  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
-  await swarm.flush()
+  await helper.createReplicator(t, { bootstrap: stager.bootstrap, updater })
 
   await t.exception(updated, /update not found/)
 })
@@ -587,28 +468,21 @@ test('should emit error if update not found', async function (t) {
 test('should update from prerelease to release', async function (t) {
   t.timeout(60_000)
 
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
+  const staging = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '1.0.0' }),
+    [`/by-arch/${host}/app/test.txt`]: 'release'
+  })
 
-  const stagerDir = await tmpDir(t)
-  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
-  await stager.ready()
-  t.teardown(() => stager.close())
-
-  const staging = await tmpDir(t)
-  const local = new Localdrive(staging)
-  await local.put('/package.json', Buffer.from(JSON.stringify({ version: '1.0.0' })))
-  await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('release'))
-  await local.close()
+  const stager = await helper.createStager(t, { testnet })
   await stager.stage(staging)
   await stager.seed()
 
-  const dir = await tmpDir(t)
+  const dir = await helper.createTmpFixture(t, { '/test.txt': 'prerelease' })
   const appFile = path.join(dir, 'test.txt')
-  await fs.promises.writeFile(appFile, 'prerelease')
 
   const store = new Corestore(path.join(dir, 'corestore'))
+  t.teardown(() => store.close())
+
   const updater = new Updater({
     dir,
     app: appFile,
@@ -623,19 +497,14 @@ test('should update from prerelease to release', async function (t) {
 
   const updated = new Promise((resolve) => updater.on('updated', resolve))
 
-  const keyPair = await store.createKeyPair('test')
-  const swarm = new Hyperswarm({ keyPair, bootstrap })
-  swarm.on('connection', (c) => store.replicate(c))
-  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
-  await swarm.flush()
-  t.teardown(() => swarm.destroy())
+  await helper.createReplicator(t, { bootstrap: stager.bootstrap, updater })
 
   await updated
   t.is(updater.updated, true, 'prerelease updated to release')
 
   if (!isWindows) {
     await updater.applyUpdate()
-    const content = await fs.promises.readFile(appFile, 'utf8')
+    const content = await fsp.readFile(appFile, 'utf8')
     t.is(content, 'release', 'file was swapped')
   }
 })
@@ -644,29 +513,22 @@ test('should delay update', async (t) => {
   t.timeout(60_000)
   t.plan(1)
 
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-  const bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
+  const staging = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '2.0.0' }),
+    [`/by-arch/${host}/app/test.txt`]: 'old'
+  })
 
-  const stagerDir = await tmpDir(t)
-  const stager = new helper.Stager({ dir: stagerDir, bootstrap })
-  await stager.ready()
-  t.teardown(() => stager.close())
-
-  const staging = await tmpDir(t)
-  const local = new Localdrive(staging)
-  await local.put('/package.json', Buffer.from(JSON.stringify({ version: '2.0.0' })))
-  await local.put(`/by-arch/${host}/app/test.txt`, Buffer.from('old'))
-  await local.close()
+  const stager = await helper.createStager(t, { testnet })
   await stager.stage(staging)
   await stager.seed()
 
-  const dir = await tmpDir(t)
+  const dir = await helper.createTmpFixture(t, { '/test.txt': 'current' })
   const appFile = path.join(dir, 'test.txt')
-  await fs.promises.writeFile(appFile, 'current')
   const delay = 5000
 
   const store = new Corestore(path.join(dir, 'corestore'))
+  t.teardown(() => store.close())
+
   const updater = new Updater({
     dir,
     app: appFile,
@@ -680,20 +542,18 @@ test('should delay update', async (t) => {
 
   t.teardown(() => updater.close())
 
-  const swarm = new Hyperswarm({ bootstrap })
-  swarm.on('connection', (c) => store.replicate(c))
-  swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
-  await swarm.flush()
-  t.teardown(() => swarm.destroy())
+  await helper.createReplicator(t, { bootstrap: stager.bootstrap, updater })
 
   updater.on('update-scheduled', () => {
     t.pass()
   })
+
+  await new Promise((resolve) => updater.on('updated', resolve))
 })
 
 async function buildWindowsExe(dir, name, version) {
-  await fs.promises.rm(path.join(dir, 'out'), { recursive: true, force: true })
-  await fs.promises.writeFile(
+  await fsp.rm(path.join(dir, 'out'), { recursive: true, force: true })
+  await fsp.writeFile(
     path.join(dir, 'package.json'),
     JSON.stringify(
       {
@@ -707,7 +567,7 @@ async function buildWindowsExe(dir, name, version) {
       2
     )
   )
-  await fs.promises.writeFile(
+  await fsp.writeFile(
     path.join(dir, 'bin.js'),
     "const pkg = require('./package.json')\nconsole.log(`${pkg.name} ${pkg.version}`)\n"
   )
@@ -726,13 +586,15 @@ async function buildWindowsExe(dir, name, version) {
   return path.join(out, name + '.exe')
 }
 
-async function exists(filename) {
-  try {
-    await fs.promises.access(filename)
-    return true
-  } catch {
-    return false
-  }
+unhookTestnet('destroy testnet', async () => {
+  await testnet.destroy()
+})
+
+function exists(filename) {
+  return fsp
+    .access(filename)
+    .then(() => true)
+    .catch(() => false)
 }
 
 function noop() {}

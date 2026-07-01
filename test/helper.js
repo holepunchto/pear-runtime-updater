@@ -1,6 +1,7 @@
 const createTestnet = require('@hyperswarm/testnet')
 const { platform, arch } = require('which-runtime')
 const path = require('path')
+const os = require('os')
 const Localdrive = require('localdrive')
 const ReadyResource = require('ready-resource')
 const Corestore = require('corestore')
@@ -13,10 +14,11 @@ module.exports = {
   createTestnet: createTestnet,
 
   Stager: class Stager extends ReadyResource {
-    constructor({ dir, bootstrap }) {
+    constructor({ dir, testnet }) {
       super()
       this.dir = dir
-      this.bootstrap = bootstrap
+      this.testnet = testnet
+      this.bootstrap = testnet.nodes.map((e) => `${e.host}:${e.port}`)
     }
 
     async _open() {
@@ -58,11 +60,27 @@ module.exports = {
     }
   },
 
-  async waitForExit(child) {
-    await new Promise((resolve, reject) => {
-      child.on('exit', (code) => {
-        if (code === 0) resolve()
-        else reject(new Error(`Failed with exit code ${code}`))
+  waitForExit(child, { logOnError = true } = {}) {
+    let stderr = ''
+    let stdout = ''
+    if (logOnError && child.stderr && child.stdout) {
+      child.stderr.on('data', (data) => {
+        stderr += data.toString()
+      })
+      child.stdout.on('data', (data) => {
+        stdout += data.toString()
+      })
+    }
+    return new Promise((resolve, reject) => {
+      child.on('exit', (code, signal) => {
+        if (signal) code = this.normalizeSignal(signal) + 128
+        if (code === 0) {
+          resolve()
+        } else {
+          console.log(`stdout:\n${stdout}`)
+          console.error(`stderr:\n${stderr}`)
+          reject(new Error(`Failed with exit code ${code}`))
+        }
       })
       child.on('error', reject)
     })
@@ -84,5 +102,44 @@ module.exports = {
     }
 
     throw lastError || new Error(`Timed out after ${timeout}ms`)
+  },
+
+  async createStager(t, { dir, testnet } = {}) {
+    if (!dir) dir = await t.tmp()
+    if (!testnet) {
+      testnet = await createTestnet()
+      t.teardown(() => testnet.destroy())
+    }
+
+    const stager = new this.Stager({ dir, testnet })
+    t.teardown(() => stager.close())
+    await stager.ready()
+
+    return stager
+  },
+
+  async createReplicator(t, { bootstrap, updater }) {
+    const swarm = new Hyperswarm({ bootstrap })
+    swarm.on('connection', (c) => updater.store.replicate(c))
+    t.teardown(() => swarm.destroy())
+
+    swarm.join(updater.drive.core.discoveryKey, { client: true, server: false })
+    await swarm.flush()
+
+    return swarm
+  },
+
+  async createTmpFixture(t, files) {
+    const output = await t.tmp()
+    const drive = new Localdrive(output)
+    for (const [file, content] of Object.entries(files)) await drive.put(file, Buffer.from(content))
+    await drive.close()
+
+    return output
+  },
+
+  normalizeSignal(signal) {
+    if (typeof signal === 'number') return signal
+    return os.constants.signals[signal] ?? 0
   }
 }

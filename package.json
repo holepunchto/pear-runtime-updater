@@ -29,6 +29,10 @@
       "bare": "bare-fs",
       "default": "fs"
     },
+    "fs/promises": {
+      "bare": "bare-fs/promises",
+      "default": "fs/promises"
+    },
     "path": {
       "bare": "bare-path",
       "default": "path"
@@ -62,14 +66,13 @@
     "bare-env": "^3.0.0",
     "bare-os": "^3.7.0",
     "bare-subprocess": "^5.2.2",
-    "brittle": "^3.19.1",
+    "brittle": "^4.0.2",
     "corestore": "^7.9.1",
     "hyperswarm": "^4.17.0",
     "lunte": "^1.6.0",
     "pear-build": "^1.1.0",
     "prettier": "^3.8.1",
-    "prettier-config-holepunch": "^2.0.0",
-    "test-tmp": "^1.4.0"
+    "prettier-config-holepunch": "^2.0.0"
   },
   "directories": {
     "test": "test"

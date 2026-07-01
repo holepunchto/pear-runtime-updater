@@ -3,8 +3,7 @@ const { spawn, spawnSync } = require('child_process')
 const helper = require('./helper')
 const path = require('path')
 const { isLinux, isMac, isWindows, platform, arch } = require('which-runtime')
-const fs = require('fs')
-const tmpDir = require('test-tmp')
+const fsp = require('fs/promises')
 const Localdrive = require('localdrive')
 const pearBuild = require('pear-build')
 
@@ -45,27 +44,21 @@ function trustMsixCertificate(msixPath) {
   return helper.waitForExit(child)
 }
 
+let testnet
+const unhookTestnet = test.hook('create testnet', async () => {
+  testnet = await helper.createTestnet()
+})
+
 test('should receive and apply update when update happens while app is running', async (t) => {
   t.timeout(300_000)
 
-  t.comment('create testnet')
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-
-  const stagerDir = await tmpDir(t)
-
   t.comment('prepare stager')
-  const stager = new helper.Stager({
-    dir: stagerDir,
-    bootstrap: testnet.nodes.map((e) => `${e.host}:${e.port}`)
-  })
-  await stager.ready()
-  t.teardown(() => stager.close())
+  const stager = await helper.createStager(t, { testnet })
   const link = stager.link
   t.ok(link, `prepared ${link}`)
 
   t.comment('prepare copy of fixture')
-  const app = await tmpDir(t)
+  const app = await t.tmp()
   await new Localdrive(fixture).mirror(new Localdrive(app)).done()
 
   t.comment('update app version and link')
@@ -73,11 +66,7 @@ test('should receive and apply update when update happens while app is running',
     const pkg = require(path.join(app, 'package.json'))
     pkg.version = '1.0.0'
     pkg.upgrade = link
-    await fs.promises.writeFile(
-      path.join(app, 'package.json'),
-      JSON.stringify(pkg, null, 2),
-      'utf8'
-    )
+    await fsp.writeFile(path.join(app, 'package.json'), JSON.stringify(pkg, null, 2), 'utf8')
   }
 
   t.comment('build app')
@@ -88,21 +77,19 @@ test('should receive and apply update when update happens while app is running',
   }
   if (isLinux) {
     appBuildPath = path.join(app, 'out', 'make', `Updater.AppImage`)
-    await fs.promises.rename(
-      path.join(app, 'out', 'make', `Updater-1.0.0-${arch}.AppImage`),
-      appBuildPath
-    )
+    await fsp.rename(path.join(app, 'out', 'make', `Updater-1.0.0-${arch}.AppImage`), appBuildPath)
   }
   if (isMac) appBuildPath = path.join(app, 'out', `Updater-${host}`, 'Updater.app')
   if (isWindows) appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'Updater.msix')
+  t.ok(await exists(appBuildPath), 'app build exists')
 
   t.comment(isWindows ? 'trust and install app' : 'copy build to run dir')
-  const runDir = await tmpDir(t)
+  const runDir = await t.tmp()
   let appRunPath
   if (isLinux) {
     appRunPath = path.join(runDir, 'Updater.AppImage')
-    await fs.promises.mkdir(path.dirname(appRunPath), { recursive: true })
-    await fs.promises.cp(appBuildPath, appRunPath)
+    await fsp.mkdir(path.dirname(appRunPath), { recursive: true })
+    await fsp.cp(appBuildPath, appRunPath)
   }
   if (isMac) {
     appRunPath = path.join(runDir, 'Updater.app')
@@ -120,7 +107,7 @@ test('should receive and apply update when update happens while app is running',
   }
 
   t.comment('run pear-build')
-  const staging = await tmpDir(t)
+  const staging = await t.tmp()
   await t.execution(
     pearBuild({
       package: path.join(app, 'package.json'),
@@ -138,9 +125,8 @@ test('should receive and apply update when update happens while app is running',
 
   t.comment('run')
   const runParams = { args: [] }
-  const appDir = await tmpDir(t)
-  const bootstrap = JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`))
-  const baseArgs = [appDir, bootstrap, '1.0.1']
+  const appDir = await t.tmp()
+  const baseArgs = [appDir, JSON.stringify(stager.bootstrap), '1.0.1']
 
   if (isLinux) {
     // needed because GHA does not support FUSE and SUID sandboxing
@@ -170,28 +156,22 @@ test('should receive and apply update when update happens while app is running',
     const pkg = require(path.join(app, 'package.json'))
     pkg.version = '1.0.1'
     pkg.upgrade = link
-    await fs.promises.writeFile(
-      path.join(app, 'package.json'),
-      JSON.stringify(pkg, null, 2),
-      'utf8'
-    )
+    await fsp.writeFile(path.join(app, 'package.json'), JSON.stringify(pkg, null, 2), 'utf8')
   }
 
   t.comment('rebuild app')
   {
     await t.execution(
-      fs.promises.rm(path.join(app, 'out'), { recursive: true }),
+      fsp.rm(path.join(app, 'out'), { recursive: true }),
       'removed old build successfully'
     )
     const child = spawn(npm, ['run', 'make'], { cwd: app, shell: true })
     await t.execution(helper.waitForExit(child), 'app rebuilt successfully')
   }
   if (isLinux) {
-    await fs.promises.rename(
-      path.join(app, 'out', 'make', `Updater-1.0.1-${arch}.AppImage`),
-      appBuildPath
-    )
+    await fsp.rename(path.join(app, 'out', 'make', `Updater-1.0.1-${arch}.AppImage`), appBuildPath)
   }
+  t.ok(await exists(appBuildPath), 'app build exists')
 
   t.comment('rerun pear-build')
   await t.execution(
@@ -216,7 +196,7 @@ test('should receive and apply update when update happens while app is running',
   await t.execution(updated, 'got updated message')
 
   t.comment('wait for exit')
-  await t.execution(await exit, 'app exited successfully')
+  await t.execution(exit, 'app exited successfully')
 
   if (isWindows) {
     t.comment('give time for MSIX installer to finish')
@@ -246,30 +226,20 @@ test('should receive and apply update when update happens while app is running',
 
   t.is(await startedVersion, '1.0.1', 'version matches updated value (1.0.1)')
 
-  await t.execution(await exit, 'app exited successfully')
+  await t.execution(exit, 'app exited successfully')
 })
 
 test('should receive and apply update when update happens while app is not running', async (t) => {
   t.timeout(300_000)
 
-  t.comment('create testnet')
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-
-  const stagerDir = await tmpDir(t)
-
   t.comment('prepare stager')
-  const stager = new helper.Stager({
-    dir: stagerDir,
-    bootstrap: testnet.nodes.map((e) => `${e.host}:${e.port}`)
-  })
-  await stager.ready()
-  t.teardown(() => stager.close())
+  const stager = await helper.createStager(t, { testnet })
+
   const link = stager.link
   t.ok(link, `prepared ${link}`)
 
   t.comment('prepare copy of fixture')
-  const app = await tmpDir(t)
+  const app = await t.tmp()
   await new Localdrive(fixture).mirror(new Localdrive(app)).done()
 
   t.comment('update app version and link')
@@ -277,11 +247,7 @@ test('should receive and apply update when update happens while app is not runni
     const pkg = require(path.join(app, 'package.json'))
     pkg.version = '1.0.0'
     pkg.upgrade = link
-    await fs.promises.writeFile(
-      path.join(app, 'package.json'),
-      JSON.stringify(pkg, null, 2),
-      'utf8'
-    )
+    await fsp.writeFile(path.join(app, 'package.json'), JSON.stringify(pkg, null, 2), 'utf8')
   }
 
   t.comment('build app')
@@ -292,21 +258,19 @@ test('should receive and apply update when update happens while app is not runni
   }
   if (isLinux) {
     appBuildPath = path.join(app, 'out', 'make', `Updater.AppImage`)
-    await fs.promises.rename(
-      path.join(app, 'out', 'make', `Updater-1.0.0-${arch}.AppImage`),
-      appBuildPath
-    )
+    await fsp.rename(path.join(app, 'out', 'make', `Updater-1.0.0-${arch}.AppImage`), appBuildPath)
   }
   if (isMac) appBuildPath = path.join(app, 'out', `Updater-${host}`, 'Updater.app')
   if (isWindows) appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'Updater.msix')
+  t.ok(await exists(appBuildPath), 'app build exists')
 
   t.comment(isWindows ? 'trust and install app' : 'copy build to run dir')
-  const runDir = await tmpDir(t)
+  const runDir = await t.tmp()
   let appRunPath
   if (isLinux) {
     appRunPath = path.join(runDir, 'Updater.AppImage')
-    await fs.promises.mkdir(path.dirname(appRunPath), { recursive: true })
-    await fs.promises.cp(appBuildPath, appRunPath)
+    await fsp.mkdir(path.dirname(appRunPath), { recursive: true })
+    await fsp.cp(appBuildPath, appRunPath)
   }
   if (isMac) {
     appRunPath = path.join(runDir, 'Updater.app')
@@ -324,7 +288,7 @@ test('should receive and apply update when update happens while app is not runni
   }
 
   t.comment('run pear-build')
-  const staging = await tmpDir(t)
+  const staging = await t.tmp()
   await t.execution(
     pearBuild({
       package: path.join(app, 'package.json'),
@@ -345,28 +309,22 @@ test('should receive and apply update when update happens while app is not runni
     const pkg = require(path.join(app, 'package.json'))
     pkg.version = '1.0.1'
     pkg.upgrade = link
-    await fs.promises.writeFile(
-      path.join(app, 'package.json'),
-      JSON.stringify(pkg, null, 2),
-      'utf8'
-    )
+    await fsp.writeFile(path.join(app, 'package.json'), JSON.stringify(pkg, null, 2), 'utf8')
   }
 
   t.comment('rebuild app')
   {
     await t.execution(
-      fs.promises.rm(path.join(app, 'out'), { recursive: true }),
+      fsp.rm(path.join(app, 'out'), { recursive: true }),
       'removed old build successfully'
     )
     const child = spawn(npm, ['run', 'make'], { cwd: app, shell: true })
     await t.execution(helper.waitForExit(child), 'app rebuilt successfully')
   }
   if (isLinux) {
-    await fs.promises.rename(
-      path.join(app, 'out', 'make', `Updater-1.0.1-${arch}.AppImage`),
-      appBuildPath
-    )
+    await fsp.rename(path.join(app, 'out', 'make', `Updater-1.0.1-${arch}.AppImage`), appBuildPath)
   }
+  t.ok(await exists(appBuildPath), 'app build exists')
 
   t.comment('rerun pear-build')
   await t.execution(
@@ -383,9 +341,8 @@ test('should receive and apply update when update happens while app is not runni
 
   t.comment('run')
   const runParams = { args: [] }
-  const appDir = await tmpDir(t)
-  const bootstrap = JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`))
-  const baseArgs = [appDir, bootstrap, '1.0.1']
+  const appDir = await t.tmp()
+  const baseArgs = [appDir, JSON.stringify(stager.bootstrap), '1.0.1']
 
   if (isLinux) {
     // needed because GHA does not support FUSE and SUID sandboxing
@@ -419,7 +376,7 @@ test('should receive and apply update when update happens while app is not runni
   await t.execution(updated, 'got updated message')
 
   t.comment('wait for exit')
-  await t.execution(await exit, 'app exited successfully')
+  await t.execution(exit, 'app exited successfully')
 
   if (isWindows) {
     t.comment('give time for MSIX installer to finish')
@@ -449,30 +406,20 @@ test('should receive and apply update when update happens while app is not runni
 
   t.is(await startedVersion, '1.0.1', 'version matches updated value (1.0.1)')
 
-  await t.execution(await exit, 'app exited successfully')
+  await t.execution(exit, 'app exited successfully')
 })
 
 test('should update from prerelease to release', async (t) => {
   t.timeout(300_000)
 
-  t.comment('create testnet')
-  const testnet = await helper.createTestnet()
-  t.teardown(() => testnet.destroy())
-
-  const stagerDir = await tmpDir(t)
-
   t.comment('prepare stager')
-  const stager = new helper.Stager({
-    dir: stagerDir,
-    bootstrap: testnet.nodes.map((e) => `${e.host}:${e.port}`)
-  })
-  await stager.ready()
-  t.teardown(() => stager.close())
+  const stager = await helper.createStager(t, { testnet })
+
   const link = stager.link
   t.ok(link, `prepared ${link}`)
 
   t.comment('prepare copy of fixture')
-  const app = await tmpDir(t)
+  const app = await t.tmp()
   await new Localdrive(fixture).mirror(new Localdrive(app)).done()
 
   t.comment('update app version and link')
@@ -480,15 +427,11 @@ test('should update from prerelease to release', async (t) => {
     const pkg = require(path.join(app, 'package.json'))
     pkg.version = '1.0.0-rc.1'
     pkg.upgrade = link
-    await fs.promises.writeFile(
-      path.join(app, 'package.json'),
-      JSON.stringify(pkg, null, 2),
-      'utf8'
-    )
+    await fsp.writeFile(path.join(app, 'package.json'), JSON.stringify(pkg, null, 2), 'utf8')
     if (isWindows) {
       const forgePath = path.join(app, 'forge.config.js')
-      const forgeContent = await fs.promises.readFile(forgePath, 'utf8')
-      await fs.promises.writeFile(
+      const forgeContent = await fsp.readFile(forgePath, 'utf8')
+      await fsp.writeFile(
         forgePath,
         forgeContent.replace(
           "manifestVariables: { publisher: 'Holepunch' }",
@@ -507,21 +450,22 @@ test('should update from prerelease to release', async (t) => {
   }
   if (isLinux) {
     appBuildPath = path.join(app, 'out', 'make', 'Updater.AppImage')
-    await fs.promises.rename(
+    await fsp.rename(
       path.join(app, 'out', 'make', `Updater-1.0.0-rc.1-${arch}.AppImage`),
       appBuildPath
     )
   }
   if (isMac) appBuildPath = path.join(app, 'out', `Updater-${host}`, 'Updater.app')
   if (isWindows) appBuildPath = path.join(app, 'out', 'make', 'msix', arch, 'Updater.msix')
+  t.ok(await exists(appBuildPath), 'app build exists')
 
   t.comment(isWindows ? 'trust and install app' : 'copy build to run dir')
-  const runDir = await tmpDir(t)
+  const runDir = await t.tmp()
   let appRunPath
   if (isLinux) {
     appRunPath = path.join(runDir, 'Updater.AppImage')
-    await fs.promises.mkdir(path.dirname(appRunPath), { recursive: true })
-    await fs.promises.cp(appBuildPath, appRunPath)
+    await fsp.mkdir(path.dirname(appRunPath), { recursive: true })
+    await fsp.cp(appBuildPath, appRunPath)
   }
   if (isMac) {
     appRunPath = path.join(runDir, 'Updater.app')
@@ -539,7 +483,7 @@ test('should update from prerelease to release', async (t) => {
   }
 
   t.comment('run pear-build')
-  const staging = await tmpDir(t)
+  const staging = await t.tmp()
   await t.execution(
     pearBuild({
       package: path.join(app, 'package.json'),
@@ -560,15 +504,11 @@ test('should update from prerelease to release', async (t) => {
     const pkg = require(path.join(app, 'package.json'))
     pkg.version = '1.0.0'
     pkg.upgrade = link
-    await fs.promises.writeFile(
-      path.join(app, 'package.json'),
-      JSON.stringify(pkg, null, 2),
-      'utf8'
-    )
+    await fsp.writeFile(path.join(app, 'package.json'), JSON.stringify(pkg, null, 2), 'utf8')
     if (isWindows) {
       const forgePath = path.join(app, 'forge.config.js')
-      const forgeContent = await fs.promises.readFile(forgePath, 'utf8')
-      await fs.promises.writeFile(
+      const forgeContent = await fsp.readFile(forgePath, 'utf8')
+      await fsp.writeFile(
         forgePath,
         forgeContent.replace(
           "manifestVariables: { publisher: 'Holepunch', packageVersion: '1.0.0.1' }",
@@ -582,18 +522,16 @@ test('should update from prerelease to release', async (t) => {
   t.comment('rebuild app')
   {
     await t.execution(
-      fs.promises.rm(path.join(app, 'out'), { recursive: true }),
+      fsp.rm(path.join(app, 'out'), { recursive: true }),
       'removed old build successfully'
     )
     const child = spawn(npm, ['run', 'make'], { cwd: app, shell: true })
     await t.execution(helper.waitForExit(child), 'app rebuilt successfully')
   }
   if (isLinux) {
-    await fs.promises.rename(
-      path.join(app, 'out', 'make', `Updater-1.0.0-${arch}.AppImage`),
-      appBuildPath
-    )
+    await fsp.rename(path.join(app, 'out', 'make', `Updater-1.0.0-${arch}.AppImage`), appBuildPath)
   }
+  t.ok(await exists(appBuildPath), 'app build exists')
 
   t.comment('rerun pear-build')
   await t.execution(
@@ -610,9 +548,8 @@ test('should update from prerelease to release', async (t) => {
 
   t.comment('run')
   const runParams = { args: [] }
-  const appDir = await tmpDir(t)
-  const bootstrap = JSON.stringify(testnet.nodes.map((e) => `${e.host}:${e.port}`))
-  const baseArgs = [appDir, bootstrap, '1.0.0']
+  const appDir = await t.tmp()
+  const baseArgs = [appDir, JSON.stringify(stager.bootstrap), '1.0.0']
 
   if (isLinux) {
     // needed because GHA does not support FUSE and SUID sandboxing
@@ -634,8 +571,7 @@ test('should update from prerelease to release', async (t) => {
     cwd: app,
     stdio: 'pipe'
   })
-  run.stdout.on('data', (data) => t.comment('app: ' + data.toString().trim()))
-  run.stderr.on('data', (data) => t.comment('app stderr: ' + data.toString().trim()))
+
   // On Windows, the process may exit with code 1 when terminated by the MSIX installer
   let exit = helper.waitForExit(run)
   const updated = new Promise((resolve) =>
@@ -648,7 +584,7 @@ test('should update from prerelease to release', async (t) => {
   await t.execution(updated, 'got updated message')
 
   t.comment('wait for exit')
-  await t.execution(await exit, 'app exited successfully')
+  await t.execution(exit, 'app exited successfully')
 
   if (isWindows) {
     t.comment('give time for MSIX installer to finish')
@@ -664,8 +600,6 @@ test('should update from prerelease to release', async (t) => {
     cwd: app,
     stdio: 'pipe'
   })
-  run.stdout.on('data', (data) => t.comment('app: ' + data.toString().trim()))
-  run.stderr.on('data', (data) => t.comment('app stderr: ' + data.toString().trim()))
   exit = helper.waitForExit(run)
 
   t.comment('wait for version')
@@ -680,5 +614,16 @@ test('should update from prerelease to release', async (t) => {
 
   t.is(await startedVersion, '1.0.0', 'version matches updated value (1.0.0)')
 
-  await t.execution(await exit, 'app exited successfully')
+  await t.execution(exit, 'app exited successfully')
 })
+
+unhookTestnet('destroy testnet', async () => {
+  await testnet.destroy()
+})
+
+function exists(filename) {
+  return fsp
+    .access(filename)
+    .then(() => true)
+    .catch(() => false)
+}
