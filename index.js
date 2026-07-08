@@ -40,6 +40,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.next = null
     this.nextVersion = null
     this.checkout = null
+    this.monitor = null
     this.prefetched = false
     this.updating = false
     this.updated = false
@@ -155,20 +156,33 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     }
     if (!hasContent) throw new Error('update not found')
     this.updating = true
-    this.emit('updating')
-    for await (const data of co.mirror(local, { prefix })) {
-      this.emit('updating-delta', data)
+    const mirror = co.mirror(local, { prefix })
+    const monitor = (this.monitor = mirror.monitor())
+    const onupdate = (stats) => this.emit('updating-progress', stats)
+
+    this.emit('updating', monitor)
+    monitor.on('update', onupdate)
+    if (monitor.stats !== null) onupdate(monitor.stats)
+
+    try {
+      for await (const data of mirror) {
+        this.emit('updating-delta', data)
+      }
+    } finally {
+      monitor.off('update', onupdate)
+      if (!monitor.destroyed) monitor.destroy()
+      this.monitor = null
+      this.updating = false
+      this.checkout = null
+
+      await co.close()
+      await local.close()
     }
 
-    await co.close()
-    await local.close()
-
-    this.checkout = null
     this.length = length
     this.next = next
     this.nextVersion = manifest.version
 
-    this.updating = false
     this.updated = true
     this.emit('updated')
   }
