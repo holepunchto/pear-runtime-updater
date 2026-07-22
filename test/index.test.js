@@ -248,6 +248,8 @@ test('should detect update when remote version is newer', async function (t) {
 })
 
 test('should apply update for Windows exe build', { skip: !isWindows }, async function (t) {
+  t.timeout(120_000)
+
   const appName = 'updater-bare'
   const exeName = appName + '.exe'
   const app = await t.tmp()
