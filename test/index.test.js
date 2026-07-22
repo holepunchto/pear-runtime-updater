@@ -20,8 +20,6 @@ const unhookTestnet = test.hook('create testnet', async () => {
 })
 
 test('should prefetch the latest version on first run', async function (t) {
-  t.timeout(120_000)
-
   const appName = `updater-${host}`
   const prefix = `/by-arch/${host}/app/${appName}`
   const staged = await helper.createTmpFixture(t, {
@@ -58,8 +56,6 @@ test('should prefetch the latest version on first run', async function (t) {
 })
 
 test('should prefetch the latest version after partial metadata sync', async function (t) {
-  t.timeout(120_000)
-
   const appName = `updater-${host}`
   const prefix = `/by-arch/${host}/app/${appName}`
   const staged = await helper.createTmpFixture(t, {
@@ -119,8 +115,6 @@ test('should prefetch the latest version after partial metadata sync', async fun
 })
 
 test('should continue updating when prefetch fails', async function (t) {
-  t.timeout(60_000)
-
   const staging = await helper.createTmpFixture(t, {
     '/package.json': JSON.stringify({ version: '1.0.1' }),
     [`/by-arch/${host}/app/test.txt`]: 'v2'
@@ -162,8 +156,6 @@ test('should continue updating when prefetch fails', async function (t) {
 })
 
 test('should not prefetch before updating to a newer version', async function (t) {
-  t.timeout(60_000)
-
   const staging = await helper.createTmpFixture(t, {
     '/package.json': JSON.stringify({ version: '1.0.1' }),
     [`/by-arch/${host}/app/test.txt`]: 'v2'
@@ -205,8 +197,6 @@ test('should not prefetch before updating to a newer version', async function (t
 })
 
 test('should detect update when remote version is newer', async function (t) {
-  t.timeout(60_000)
-
   const staging = await helper.createTmpFixture(t, {
     '/package.json': JSON.stringify({ version: '1.0.0' }),
     [`/by-arch/${host}/app/test.txt`]: 'v1'
@@ -258,8 +248,6 @@ test('should detect update when remote version is newer', async function (t) {
 })
 
 test('should apply update for Windows exe build', { skip: !isWindows }, async function (t) {
-  t.timeout(120_000)
-
   const appName = 'updater-bare'
   const exeName = appName + '.exe'
   const app = await t.tmp()
@@ -329,8 +317,6 @@ test('should apply update for Windows exe build', { skip: !isWindows }, async fu
 })
 
 test('should detect update when app is a folder (like in MacOS)', async function (t) {
-  t.timeout(60_000)
-
   const staging = await helper.createTmpFixture(t, {
     '/package.json': JSON.stringify({ version: '1.0.0' }),
     [`/by-arch/${host}/app/test.app/test.txt`]: 'v1'
@@ -383,8 +369,6 @@ test('should detect update when app is a folder (like in MacOS)', async function
 })
 
 test('should not update when remote version is older', async function (t) {
-  t.timeout(60_000)
-
   const staging = await helper.createTmpFixture(t, {
     '/package.json': JSON.stringify({ version: '1.0.0' }),
     [`/by-arch/${host}/app/test.txt`]: 'old'
@@ -426,7 +410,6 @@ test('should not update when remote version is older', async function (t) {
 
 test('should emit error if update not found', async function (t) {
   t.plan(1)
-  t.timeout(60_000)
 
   const dir = await helper.createTmpFixture(t, { '/test.txt': 'v1' })
   const appFile = path.join(dir, 'test.txt')
@@ -466,8 +449,6 @@ test('should emit error if update not found', async function (t) {
 })
 
 test('should update from prerelease to release', async function (t) {
-  t.timeout(60_000)
-
   const staging = await helper.createTmpFixture(t, {
     '/package.json': JSON.stringify({ version: '1.0.0' }),
     [`/by-arch/${host}/app/test.txt`]: 'release'
@@ -510,7 +491,6 @@ test('should update from prerelease to release', async function (t) {
 })
 
 test('should delay update', async (t) => {
-  t.timeout(60_000)
   t.plan(1)
 
   const staging = await helper.createTmpFixture(t, {
@@ -552,7 +532,6 @@ test('should delay update', async (t) => {
 })
 
 test('should handle close during update', async (t) => {
-  t.timeout(60_000)
   t.plan(3)
 
   const staging = await helper.createTmpFixture(t, {
@@ -599,7 +578,6 @@ test('should handle close during update', async (t) => {
 })
 
 test('should prevent update after close', async (t) => {
-  t.timeout(60_000)
   t.plan(4)
 
   const staging = await helper.createTmpFixture(t, {
