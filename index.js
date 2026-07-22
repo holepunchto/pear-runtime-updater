@@ -85,10 +85,8 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
   async _close() {
     if (this._updating) await this._updating
-    await this.drive.close()
-
-    if (!this.updates) return
     if (this.checkout !== null) await this.checkout.close()
+    await this.drive.close()
     if (this._scheduledUpdate) clearTimeout(this._scheduledUpdate)
   }
 
