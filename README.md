@@ -107,6 +107,23 @@ Emitted with mirror delta data while mirroring the update.
 
 Emitted with mirror monitor stats while downloading the update. Use `stats.download.progress` for progress bars.
 
+```js
+{
+  peers: Number,
+  download: {
+    bytes: Number,
+    blocks: Number,
+    speed: Number,
+    progress: Number
+  },
+  upload: {
+    bytes: Number,
+    blocks: Number,
+    speed: Number
+  }
+}
+```
+
 #### `updater.on('updated')`
 
 Emitted when the update is fully downloaded and ready. After this, `updater.next` is the path to the staged update.
