@@ -97,7 +97,7 @@ Emitted when a new upgrade drive length is detected and the update has been sche
 
 #### `updater.on('updating')`
 
-Emitted when an update is in progress. The mirror monitor is passed as the first argument.
+Emitted when an update is in progress.
 
 #### `updater.on('updating-delta', data)`
 

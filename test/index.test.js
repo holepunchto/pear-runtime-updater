@@ -313,7 +313,6 @@ test('should detect update when remote version is newer', async function (t) {
   t.is(updater.updated, false)
 
   const progress = []
-  const updating = new Promise((resolve) => updater.once('updating', resolve))
   updater.on('updating-progress', (stats) => progress.push(stats))
   const updated = new Promise((resolve) => updater.on('updated', resolve))
 
@@ -324,10 +323,8 @@ test('should detect update when remote version is newer', async function (t) {
   await local2.close()
   await stager.stage(staging2)
 
-  const monitor = await updating
   await updated
 
-  t.is(typeof monitor.destroy, 'function', 'updating event receives monitor')
   t.ok(progress.length > 0, 'progress events were emitted')
   t.ok(
     progress.every((stats) => {
