@@ -50,7 +50,10 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     )
     this._scheduledUpdate = null
 
-    this._debouncedUpdate = debounceify(this._update.bind(this))
+    this._debouncedUpdate = debounceify(() => {
+      this._updating = this._update().catch((err) => this.emit('error', err))
+      return this._updating
+    })
 
     this.ready().catch(noop)
   }
@@ -65,13 +68,13 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
         force: true
       })
 
-      this._debouncedUpdate().catch((err) => this.emit('error', err))
+      this._debouncedUpdate()
       this.drive.core.on('append', () => {
         if (this._scheduledUpdate !== null) clearTimeout(this._scheduledUpdate) // cancel old pending updates before scheduling new one
         const recentBoot = Date.now() - this._start <= this._bootGracePeriod
         this._scheduledUpdate = setTimeout(
           () => {
-            this._debouncedUpdate().catch((err) => this.emit('error', err))
+            this._debouncedUpdate()
           },
           recentBoot ? 0 : this._delay
         )
@@ -81,6 +84,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
   }
 
   async _close() {
+    if (this._updating) await this._updating
     await this.drive.close()
 
     if (!this.updates) return
@@ -110,7 +114,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
   }
 
   async _update() {
-    if (!this.updates) return
+    if (!this.updates || this.closing) return
 
     await this.drive.update()
 
