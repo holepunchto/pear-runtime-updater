@@ -20,8 +20,6 @@ const unhookTestnet = test.hook('create testnet', async () => {
 })
 
 test('should prefetch the latest version on first run', async function (t) {
-  t.timeout(120_000)
-
   const appName = `updater-${host}`
   const prefix = `/by-arch/${host}/app/${appName}`
   const staged = await helper.createTmpFixture(t, {
@@ -58,8 +56,6 @@ test('should prefetch the latest version on first run', async function (t) {
 })
 
 test('should prefetch the latest version after partial metadata sync', async function (t) {
-  t.timeout(120_000)
-
   const appName = `updater-${host}`
   const prefix = `/by-arch/${host}/app/${appName}`
   const staged = await helper.createTmpFixture(t, {
@@ -119,8 +115,6 @@ test('should prefetch the latest version after partial metadata sync', async fun
 })
 
 test('should continue updating when prefetch fails', async function (t) {
-  t.timeout(60_000)
-
   const staging = await helper.createTmpFixture(t, {
     '/package.json': JSON.stringify({ version: '1.0.1' }),
     [`/by-arch/${host}/app/test.txt`]: 'v2'
@@ -162,8 +156,6 @@ test('should continue updating when prefetch fails', async function (t) {
 })
 
 test('should not prefetch before updating to a newer version', async function (t) {
-  t.timeout(60_000)
-
   const staging = await helper.createTmpFixture(t, {
     '/package.json': JSON.stringify({ version: '1.0.1' }),
     [`/by-arch/${host}/app/test.txt`]: 'v2'
@@ -205,8 +197,6 @@ test('should not prefetch before updating to a newer version', async function (t
 })
 
 test('should detect update when remote version is newer', async function (t) {
-  t.timeout(60_000)
-
   const staging = await helper.createTmpFixture(t, {
     '/package.json': JSON.stringify({ version: '1.0.0' }),
     [`/by-arch/${host}/app/test.txt`]: 'v1'
@@ -345,8 +335,6 @@ test('should apply update for Windows exe build', { skip: !isWindows }, async fu
 })
 
 test('should detect update when app is a folder (like in MacOS)', async function (t) {
-  t.timeout(60_000)
-
   const staging = await helper.createTmpFixture(t, {
     '/package.json': JSON.stringify({ version: '1.0.0' }),
     [`/by-arch/${host}/app/test.app/test.txt`]: 'v1'
@@ -399,8 +387,6 @@ test('should detect update when app is a folder (like in MacOS)', async function
 })
 
 test('should not update when remote version is older', async function (t) {
-  t.timeout(60_000)
-
   const staging = await helper.createTmpFixture(t, {
     '/package.json': JSON.stringify({ version: '1.0.0' }),
     [`/by-arch/${host}/app/test.txt`]: 'old'
@@ -442,7 +428,6 @@ test('should not update when remote version is older', async function (t) {
 
 test('should emit error if update not found', async function (t) {
   t.plan(1)
-  t.timeout(60_000)
 
   const dir = await helper.createTmpFixture(t, { '/test.txt': 'v1' })
   const appFile = path.join(dir, 'test.txt')
@@ -482,8 +467,6 @@ test('should emit error if update not found', async function (t) {
 })
 
 test('should update from prerelease to release', async function (t) {
-  t.timeout(60_000)
-
   const staging = await helper.createTmpFixture(t, {
     '/package.json': JSON.stringify({ version: '1.0.0' }),
     [`/by-arch/${host}/app/test.txt`]: 'release'
@@ -526,7 +509,6 @@ test('should update from prerelease to release', async function (t) {
 })
 
 test('should delay update', async (t) => {
-  t.timeout(60_000)
   t.plan(1)
 
   const staging = await helper.createTmpFixture(t, {
@@ -565,6 +547,111 @@ test('should delay update', async (t) => {
   })
 
   await new Promise((resolve) => updater.on('updated', resolve))
+})
+
+test('should handle close during update', async (t) => {
+  t.plan(3)
+
+  const staging = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '2.0.0' }),
+    [`/by-arch/${host}/app/test.txt`]: 'old'
+  })
+
+  const stager = await helper.createStager(t, { testnet })
+  await stager.stage(staging)
+  await stager.seed()
+
+  const dir = await helper.createTmpFixture(t, { '/test.txt': 'current' })
+  const appFile = path.join(dir, 'test.txt')
+
+  const store = new Corestore(path.join(dir, 'corestore'))
+  t.teardown(() => store.close())
+
+  const updater = new Updater({
+    dir,
+    app: appFile,
+    version: '1.0.0',
+    upgrade: stager.link,
+    name: 'test.txt',
+    store,
+    delay: 100
+  })
+  await updater.ready()
+
+  t.teardown(() => updater.close())
+
+  await helper.createReplicator(t, { bootstrap: stager.bootstrap, updater })
+
+  await t.execution(new Promise((resolve) => updater.on('updating', resolve)), 'update started')
+
+  let closed = false
+  const closing = updater.close().then(() => {
+    closed = true
+  })
+
+  await new Promise((resolve) => updater.on('updated', resolve))
+  t.absent(closed, 'updater should finish update before close')
+
+  await t.execution(closing, 'updater should successfully close')
+})
+
+test('should prevent update after close', async (t) => {
+  t.plan(4)
+
+  const staging = await helper.createTmpFixture(t, {
+    '/package.json': JSON.stringify({ version: '2.0.0' }),
+    [`/by-arch/${host}/app/test.txt`]: 'old'
+  })
+
+  const stager = await helper.createStager(t, { testnet })
+  await stager.stage(staging)
+  await stager.seed()
+
+  const dir = await helper.createTmpFixture(t, { '/test.txt': 'current' })
+  const appFile = path.join(dir, 'test.txt')
+  const delay = 100
+
+  const store = new Corestore(path.join(dir, 'corestore'))
+  t.teardown(() => store.close())
+
+  const updater = new Updater({
+    dir,
+    app: appFile,
+    version: '1.0.0',
+    upgrade: stager.link,
+    name: 'test.txt',
+    store,
+    delay
+  })
+  await updater.ready()
+
+  t.teardown(() => updater.close())
+
+  let updated = false
+  updater.on('updated', () => {
+    updated = true
+  })
+
+  let updating = false
+  updater.on('updating', () => {
+    updating = true
+  })
+
+  await helper.createReplicator(t, { bootstrap: stager.bootstrap, updater })
+
+  await t.execution(
+    new Promise((resolve) => updater.on('update-scheduled', resolve)),
+    'updater scheduled'
+  )
+  const delayWait = new Promise((resolve) => setTimeout(resolve, delay + 100))
+
+  await t.execution(updater.close(), 'updater closed after schedule')
+
+  t.comment('waiting for delay to lapse')
+  await delayWait
+
+  t.absent(updated, 'updater should not update after close')
+  t.absent(updating, 'updater should not emit updating after close')
 })
 
 async function buildWindowsExe(dir, name, version) {
