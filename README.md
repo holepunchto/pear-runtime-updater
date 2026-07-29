@@ -43,6 +43,9 @@ await updater.ready()
 
 updater.on('update-scheduled', (delay) => console.log('Update will start in', delay))
 updater.on('updating', () => console.log('Update downloading…'))
+updater.on('updating-progress', ({ download }) => {
+  console.log('Download progress', Math.round(download.progress * 100))
+})
 updater.on('updated', async () => {
   console.log('Update ready')
   await updater.applyUpdate()
@@ -70,7 +73,7 @@ goodbye(async () => {
 
 - Peer-to-peer over-the-air (P2P OTA) update listening
 - Appends update content via [Hyperdrive](https://github.com/holepunchto/hyperdrive)
-- Emits when an update is in progress, update diffs and when it’s ready
+- Emits when an update is in progress, update diffs, download progress and when it’s ready
 - `applyUpdate()` to atomic swap the new build (bundled apps; macOS/Linux)
 - Default random update delay to avoid seeder overload on new releases
 
@@ -98,7 +101,28 @@ Emitted when an update is in progress.
 
 #### `updater.on('updating-delta', data)`
 
-Emitted with progress data while mirroring the update.
+Emitted with mirror delta data while mirroring the update.
+
+#### `updater.on('updating-progress', stats)`
+
+Emitted with mirror monitor stats while downloading the update. Use `stats.download.progress` for progress bars.
+
+```js
+{
+  peers: Number,
+  download: {
+    bytes: Number,
+    blocks: Number,
+    speed: Number,
+    progress: Number
+  },
+  upload: {
+    bytes: Number,
+    blocks: Number,
+    speed: Number
+  }
+}
+```
 
 #### `updater.on('updated')`
 

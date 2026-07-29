@@ -156,9 +156,18 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     if (!hasContent) throw new Error('update not found')
     this.updating = true
     this.emit('updating')
-    for await (const data of co.mirror(local, { prefix })) {
+
+    const mirror = co.mirror(local, { prefix })
+    const monitor = mirror.monitor()
+    const onupdate = (stats) => this.emit('updating-progress', stats)
+
+    monitor.on('update', onupdate)
+    if (monitor.stats !== null) onupdate(monitor.stats)
+
+    for await (const data of mirror) {
       this.emit('updating-delta', data)
     }
+    monitor.destroy()
 
     await co.close()
     await local.close()

@@ -238,6 +238,8 @@ test('should detect update when remote version is newer', async function (t) {
 
   t.is(updater.updated, false)
 
+  const progress = []
+  updater.on('updating-progress', (stats) => progress.push(stats))
   const updated = new Promise((resolve) => updater.on('updated', resolve))
 
   const staging2 = await helper.createTmpFixture(t, {
@@ -248,6 +250,20 @@ test('should detect update when remote version is newer', async function (t) {
   await stager.stage(staging2)
 
   await updated
+
+  t.ok(progress.length > 0, 'progress events were emitted')
+  t.ok(
+    progress.every((stats) => {
+      return (
+        typeof stats.download.bytes === 'number' &&
+        typeof stats.download.blocks === 'number' &&
+        typeof stats.download.speed === 'number' &&
+        stats.download.progress >= 0 &&
+        stats.download.progress <= 1
+      )
+    }),
+    'progress events include download stats'
+  )
   t.is(updater.updated, true)
 
   if (!isWindows) {
