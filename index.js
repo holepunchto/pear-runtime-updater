@@ -26,6 +26,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
     this.app = opts.app
     this.name = opts.name
     this.bundled = opts.bundled || !!this.app
+    this.skipUpdate = opts.skipUpdate || null
 
     const { drive: upgrade } = link.parse(opts.upgrade)
     this.key = hid.decode(upgrade.key)
@@ -113,6 +114,7 @@ module.exports = class PearRuntimeUpdater extends ReadyResource {
 
   async _update() {
     if (!this.updates || this.closing) return
+    if (this.skipUpdate && (await this.skipUpdate())) return
 
     await this.drive.update()
 
