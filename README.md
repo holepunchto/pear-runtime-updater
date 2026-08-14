@@ -90,6 +90,7 @@ goodbye(async () => {
 - `opts.bundled` – (optional) Whether the app is bundled. Defaults to `!!opts.app`.
 - `opts.updates` – (optional) Set to false to opt out of updates.
 - `opts.delay` – (optional) Upper bound (in ms) for the randomized update mirror delay. Defaults to 3_600_000 (60 minutes).
+- `opts.skipUpdate` – (optional) function that runs on drive appends. If the function returns true the current update will not be applied. Can be async.
 
 #### `updater.on('update-scheduled')`
 
